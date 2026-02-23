@@ -47,6 +47,9 @@
 #   T-BUSY-009: agent_is_busy — 'background terminal running' detected as busy
 #   T-BUSY-010: agent_is_busy — 'Compacting conversation' detected as busy
 #   T-BUSY-011: agent_is_busy — 'esc to interrupt' alone detected as busy
+#   T-SHOOK-001: Claude Code throttle uses 300s cooldown (stop-hook-primary)
+#   T-SHOOK-002: Claude Code throttle ignores count changes (stop-hook-primary)
+#   T-SHOOK-003: Non-Claude CLIs still bypass throttle on count change
 #   T-CRESET-001: send_context_reset — suppresses /clear for karo
 #   T-CRESET-002: send_context_reset — suppresses /clear for gunshi
 #   T-CRESET-003: send_context_reset — sends /clear for ashigaru
@@ -965,6 +968,88 @@ YAML
         agent_is_busy
     '
     [ "$status" -eq 0 ]
+}
+
+# --- T-SHOOK-001: Claude Code throttle uses 300s cooldown ---
+
+@test "T-SHOOK-001: Claude Code throttle uses 300s cooldown (stop-hook-primary)" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="claude"
+        LAST_NUDGE_TS=0
+        LAST_NUDGE_COUNT=""
+
+        # First call: should pass through (no throttle)
+        should_throttle_nudge 1
+        rc1=$?
+
+        # Simulate 60s elapsed (would pass for default 60s cooldown)
+        LAST_NUDGE_TS=$(($(date +%s) - 60))
+        LAST_NUDGE_COUNT=1
+
+        # Second call with same count after 60s: should STILL throttle for claude (300s cooldown)
+        should_throttle_nudge 1
+        rc2=$?
+
+        echo "rc1=$rc1 rc2=$rc2"
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "rc1=1 rc2=0"  # 1=not-throttled, 0=throttled
+    echo "$output" | grep -q "stop-hook-primary"
+}
+
+# --- T-SHOOK-002: Claude Code throttle ignores count changes ---
+
+@test "T-SHOOK-002: Claude Code throttle ignores count changes (stop-hook-primary)" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="claude"
+        LAST_NUDGE_TS=0
+        LAST_NUDGE_COUNT=""
+
+        # First call: should pass through
+        should_throttle_nudge 1
+        rc1=$?
+
+        # Simulate 30s elapsed, count changed from 1 to 2
+        LAST_NUDGE_TS=$(($(date +%s) - 30))
+
+        # For non-claude, count change (1→2) would bypass throttle.
+        # For claude, count change should NOT bypass — Stop hook handles it.
+        should_throttle_nudge 2
+        rc2=$?
+
+        echo "rc1=$rc1 rc2=$rc2"
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "rc1=1 rc2=0"  # Both: 1=pass, 0=throttled (count change ignored)
+    echo "$output" | grep -q "stop-hook-primary"
+}
+
+# --- T-SHOOK-003: Non-Claude CLIs bypass throttle on count change ---
+
+@test "T-SHOOK-003: Non-Claude CLIs still bypass throttle on count change" {
+    run bash -c '
+        source "'"$TEST_HARNESS"'"
+        CLI_TYPE="copilot"
+        LAST_NUDGE_TS=0
+        LAST_NUDGE_COUNT=""
+
+        # First call
+        should_throttle_nudge 1
+        rc1=$?
+
+        # Simulate 30s elapsed, count changed from 1 to 2
+        LAST_NUDGE_TS=$(($(date +%s) - 30))
+
+        # For copilot, count change (1→2) SHOULD bypass throttle
+        should_throttle_nudge 2
+        rc2=$?
+
+        echo "rc1=$rc1 rc2=$rc2"
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "rc1=1 rc2=1"  # Both pass through (count changed)
 }
 
 # --- T-CRESET-001: send_context_reset suppresses /clear for karo ---

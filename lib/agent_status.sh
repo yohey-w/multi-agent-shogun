@@ -13,6 +13,21 @@
 # agent_is_busy_check <pane_target>
 # tmux paneの末尾5行からCLI固有のidle/busyパターンを検出する。
 # Returns: 0=busy, 1=idle, 2=pane不在
+#
+# Detection strategy:
+#   1. Status bar check (last non-empty line): 'esc to' only appears in
+#      Claude Code's status bar during active processing. This is the most
+#      reliable busy signal — immune to old spinner text in scroll-back.
+#   2. Idle checks: CLI-specific idle prompts (❯, Codex ? prompt)
+#   3. Text-based busy markers: spinner keywords in bottom 5 lines
+#
+# Why this order matters:
+#   - Claude Code shows ❯ prompt even during thinking/working, so idle
+#     checks alone cause false-idle (the bug that broke is_busy).
+#   - Old spinner text (e.g. "Working on task • esc to interrupt") lingers
+#     in scroll-back, so checking all 5 lines for 'esc to' causes false-busy
+#     (the bug T-BUSY-008 fixed). Solution: check ONLY the last line for
+#     'esc to' — the status bar is always at the bottom.
 agent_is_busy_check() {
     local pane_target="$1"
     local pane_tail
@@ -25,7 +40,18 @@ agent_is_busy_check() {
         return 2
     fi
 
-    # ── Idle checks (take priority) ──
+    # ── Status bar check (last non-empty line = most reliable) ──
+    # Claude Code status bar appends 'esc to interrupt' (or truncated 'esc to…')
+    # ONLY during active processing. When idle, this suffix disappears.
+    # Checking only the last line avoids false-busy from old spinner text
+    # that might still be visible in the bottom 5 lines (T-BUSY-008 scenario).
+    local last_line
+    last_line=$(echo "$pane_tail" | grep -v '^[[:space:]]*$' | tail -1)
+    if echo "$last_line" | grep -qiF 'esc to'; then
+        return 0  # busy — status bar confirms active processing
+    fi
+
+    # ── Idle checks ──
     # Codex idle prompt
     if echo "$pane_tail" | grep -qE '(\? for shortcuts|context left)'; then
         return 1
@@ -35,10 +61,9 @@ agent_is_busy_check() {
         return 1
     fi
 
-    # ── Busy markers (bottom 5 lines only) ──
-    if echo "$pane_tail" | grep -qiF 'esc to interrupt'; then
-        return 0
-    fi
+    # ── Text-based busy markers (bottom 5 lines) ──
+    # These catch non-Claude-Code CLIs and edge cases where status bar
+    # isn't present but spinner text indicates active work.
     if echo "$pane_tail" | grep -qiF 'background terminal running'; then
         return 0
     fi

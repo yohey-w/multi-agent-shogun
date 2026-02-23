@@ -189,9 +189,21 @@ should_throttle_nudge() {
     local cooldown_sec="${NUDGE_COOLDOWN_SEC:-60}"
     if [[ "$effective_cli" == "codex" ]]; then
         cooldown_sec="${NUDGE_COOLDOWN_SEC_CODEX:-300}"
+    elif [[ "$effective_cli" == "claude" ]]; then
+        # Claude Code: Stop hook is the primary inbox delivery mechanism.
+        # Normal nudges are only a safety net — throttle aggressively (5 min).
+        cooldown_sec="${NUDGE_COOLDOWN_SEC_CLAUDE:-300}"
     fi
 
-    if [ "${LAST_NUDGE_COUNT:-}" = "$unread_count" ] && [ "${LAST_NUDGE_TS:-0}" -gt 0 ]; then
+    # Claude Code: throttle regardless of count change.
+    # Stop hook catches new messages at turn end, so count-change bypass is unnecessary.
+    if [[ "$effective_cli" == "claude" ]] && [ "${LAST_NUDGE_TS:-0}" -gt 0 ]; then
+        local age=$((now - LAST_NUDGE_TS))
+        if [ "$age" -lt "${cooldown_sec}" ]; then
+            echo "[$(date)] [SKIP] Throttling nudge for $AGENT_ID: inbox${unread_count} (${age}s < ${cooldown_sec}s, cli=$effective_cli, stop-hook-primary)" >&2
+            return 0
+        fi
+    elif [ "${LAST_NUDGE_COUNT:-}" = "$unread_count" ] && [ "${LAST_NUDGE_TS:-0}" -gt 0 ]; then
         local age=$((now - LAST_NUDGE_TS))
         if [ "$age" -lt "${cooldown_sec}" ]; then
             echo "[$(date)] [SKIP] Throttling nudge for $AGENT_ID: inbox${unread_count} (${age}s < ${cooldown_sec}s, cli=$effective_cli)" >&2
