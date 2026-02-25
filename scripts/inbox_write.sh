@@ -30,15 +30,38 @@ fi
 MSG_ID="msg_$(date +%Y%m%d_%H%M%S)_$(head -c 4 /dev/urandom | xxd -p)"
 TIMESTAMP=$(date "+%Y-%m-%dT%H:%M:%S")
 
-# Atomic write with flock (3 retries)
+# Cross-platform lock: flock (Linux) or mkdir (macOS fallback)
+LOCK_DIR="${LOCKFILE}.d"
+
+_acquire_lock() {
+    if command -v flock &>/dev/null; then
+        exec 200>"$LOCKFILE"
+        flock -w 5 200 || return 1
+    else
+        local i=0
+        while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+            sleep 0.1
+            i=$((i + 1))
+            [ $i -ge 50 ] && return 1  # 5s timeout
+        done
+    fi
+    return 0
+}
+
+_release_lock() {
+    if command -v flock &>/dev/null; then
+        exec 200>&-
+    else
+        rmdir "$LOCK_DIR" 2>/dev/null
+    fi
+}
+
+# Atomic write with lock (3 retries)
 attempt=0
 max_attempts=3
 
 while [ $attempt -lt $max_attempts ]; do
-    if (
-        flock -w 5 200 || exit 1
-
-        # Add message via python3 (unified YAML handling)
+    if _acquire_lock; then
         "$SCRIPT_DIR/.venv/bin/python3" -c "
 import yaml, sys
 
@@ -86,13 +109,14 @@ try:
 except Exception as e:
     print(f'ERROR: {e}', file=sys.stderr)
     sys.exit(1)
-" || exit 1
-
-    ) 200>"$LOCKFILE"; then
-        # Success
-        exit 0
+"
+        STATUS=$?
+        _release_lock
+        [ $STATUS -eq 0 ] && exit 0
+        attempt=$((attempt + 1))
+        [ $attempt -lt $max_attempts ] && sleep 1
     else
-        # Lock timeout or error
+        # Lock timeout
         attempt=$((attempt + 1))
         if [ $attempt -lt $max_attempts ]; then
             echo "[inbox_write] Lock timeout for $INBOX (attempt $attempt/$max_attempts), retrying..." >&2
