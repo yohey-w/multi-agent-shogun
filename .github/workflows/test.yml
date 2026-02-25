@@ -9,16 +9,26 @@ on:
 
 jobs:
   unit-tests:
-    name: Unit Tests (bats)
-    runs-on: ubuntu-latest
+    name: Unit Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install bats-core
+      - name: Install bats-core (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo npm install -g bats
+
+      - name: Install bats-core (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bats-core
 
       - name: Setup bats helpers
         run: |
@@ -26,7 +36,8 @@ jobs:
           git clone --depth 1 https://github.com/bats-core/bats-support tests/test_helper/bats-support
           git clone --depth 1 https://github.com/bats-core/bats-assert tests/test_helper/bats-assert
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-venv
@@ -87,7 +98,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-results
+          name: unit-test-results-${{ matrix.os }}
           path: tests/unit/*.tap
           if-no-files-found: ignore
 

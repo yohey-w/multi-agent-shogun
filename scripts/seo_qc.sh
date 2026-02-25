@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # SEO Article QC Skill - Wrapper Script
 # Usage: bash scripts/seo_qc.sh <site|all> [summary|yaml|both]

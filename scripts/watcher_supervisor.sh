@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Keep inbox watchers alive in a persistent tmux-hosted shell.

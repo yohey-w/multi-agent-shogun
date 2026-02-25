@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # stop_hook_inbox.sh — Claude Code Stop Hook for inbox delivery
 # ═══════════════════════════════════════════════════════════════

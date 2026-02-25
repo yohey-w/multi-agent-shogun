@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # inbox_watcher.sh — メールボックス監視＆起動シグナル配信
 # Usage: bash scripts/inbox_watcher.sh <agent_id> <pane_target> [cli_type]

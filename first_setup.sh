@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ============================================================
 # first_setup.sh - multi-agent-shogun 初回セットアップスクリプト
 # Ubuntu / WSL / Mac 用環境構築ツール

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 # ntfy Input Listener
 # Streams messages from ntfy topic, writes to inbox YAML, wakes shogun.

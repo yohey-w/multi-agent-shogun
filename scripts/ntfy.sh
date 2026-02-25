@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # SayTask通知 — ntfy.sh経由でスマホにプッシュ通知
 # FR-066: ntfy認証対応 (Bearer token / Basic auth)
 

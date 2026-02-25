@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # slim_yaml.sh - YAML slimming wrapper with file locking
 #
