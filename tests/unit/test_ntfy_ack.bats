@@ -90,6 +90,13 @@ INBOX_MOCK
 }
 
 teardown() {
+    # On failure, dump debug info (bats captures and shows this on test failure)
+    if [ "${BATS_TEST_COMPLETED:-}" != "1" ]; then
+        echo "=== listener stderr ===" >&2
+        cat "$TEST_TMPDIR/listener.err" 2>/dev/null || true
+        echo "=== INBOX_LOG ===" >&2
+        cat "$INBOX_LOG" 2>/dev/null || echo "(empty)" >&2
+    fi
     # Restore permissions if changed (T-ACK-007)
     chmod 755 "$MOCK_PROJECT/queue" 2>/dev/null || true
     rm -rf "$TEST_TMPDIR"
@@ -98,7 +105,14 @@ teardown() {
 # --- ヘルパー ---
 
 run_listener() {
-    timeout 3 bash "$MOCK_PROJECT/ntfy_listener_test.sh" 2>/dev/null || true
+    timeout 3 bash "$MOCK_PROJECT/ntfy_listener_test.sh" 2>"$TEST_TMPDIR/listener.err" || true
+}
+
+_show_debug() {
+    echo "=== listener stderr ===" >&2
+    cat "$TEST_TMPDIR/listener.err" >&2 2>/dev/null || true
+    echo "=== INBOX_LOG ===" >&2
+    cat "$INBOX_LOG" >&2 2>/dev/null || echo "(empty)" >&2
 }
 
 # ═══════════════════════════════════════════════════════════════
