@@ -41,8 +41,14 @@ YAML
     # 本物のntfy_auth.shをコピー
     cp "$PROJECT_ROOT/lib/ntfy_auth.sh" "$MOCK_PROJECT/lib/"
 
-    # python3シンボリックリンク
-    ln -sf "$PROJECT_ROOT/.venv/bin/python3" "$MOCK_PROJECT/.venv/bin/python3"
+    # python3 wrapper (exec to project venv so pyvenv.cfg is found → PyYAML available)
+    # Note: a symlink chain breaks venv detection on macOS — argv[0] would point to
+    # $MOCK_PROJECT/.venv/bin/python3 but pyvenv.cfg only exists in $PROJECT_ROOT/.venv/
+    cat > "$MOCK_PROJECT/.venv/bin/python3" << WRAPPER
+#!/bin/sh
+exec "$PROJECT_ROOT/.venv/bin/python3" "\$@"
+WRAPPER
+    chmod +x "$MOCK_PROJECT/.venv/bin/python3"
 
     # ntfy_inbox初期化
     echo "inbox:" > "$MOCK_PROJECT/queue/ntfy_inbox.yaml"
@@ -90,13 +96,6 @@ INBOX_MOCK
 }
 
 teardown() {
-    # On failure, dump debug info (bats captures and shows this on test failure)
-    if [ "${BATS_TEST_COMPLETED:-}" != "1" ]; then
-        echo "=== listener stderr ===" >&2
-        cat "$TEST_TMPDIR/listener.err" 2>/dev/null || true
-        echo "=== INBOX_LOG ===" >&2
-        cat "$INBOX_LOG" 2>/dev/null || echo "(empty)" >&2
-    fi
     # Restore permissions if changed (T-ACK-007)
     chmod 755 "$MOCK_PROJECT/queue" 2>/dev/null || true
     rm -rf "$TEST_TMPDIR"
@@ -105,14 +104,7 @@ teardown() {
 # --- ヘルパー ---
 
 run_listener() {
-    timeout 3 bash "$MOCK_PROJECT/ntfy_listener_test.sh" 2>"$TEST_TMPDIR/listener.err" || true
-}
-
-_show_debug() {
-    echo "=== listener stderr ===" >&2
-    cat "$TEST_TMPDIR/listener.err" >&2 2>/dev/null || true
-    echo "=== INBOX_LOG ===" >&2
-    cat "$INBOX_LOG" >&2 2>/dev/null || echo "(empty)" >&2
+    timeout 3 bash "$MOCK_PROJECT/ntfy_listener_test.sh" 2>/dev/null || true
 }
 
 # ═══════════════════════════════════════════════════════════════
