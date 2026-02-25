@@ -30,9 +30,11 @@ jobs:
         run: |
           brew install bats-core
 
-      - name: Add GNU coreutils to PATH (macOS)
+      - name: Install GNU tools (macOS)
         if: runner.os == 'macOS'
         run: |
+          brew install bash coreutils
+          echo "$(brew --prefix)/bin" >> $GITHUB_PATH
           echo "$(brew --prefix)/opt/coreutils/libexec/gnubin" >> $GITHUB_PATH
 
       - name: Setup bats helpers
