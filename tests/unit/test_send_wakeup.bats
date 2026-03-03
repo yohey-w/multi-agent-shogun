@@ -55,6 +55,10 @@
 #   T-CRESET-003: send_context_reset — sends /clear for ashigaru
 #   T-COPILOT-001: send_cli_command — copilot /clear → Ctrl-C + restart
 #   T-COPILOT-002: send_cli_command — copilot /model → skip
+#   T-CTX-001: agent_has_ctx — returns 0 when Ctx is non-zero
+#   T-CTX-002: agent_has_ctx — returns 1 when Ctx is absent
+#   T-ESC-006: Phase 3 skips /clear when agent has active Ctx
+#   T-ESC-007: Phase 3 sends /clear when agent has no active Ctx
 
 # --- セットアップ ---
 
@@ -1102,5 +1106,82 @@ YAML
     [ "$status" -eq 0 ]
 
     # /clear should have been sent via send-keys
+    grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+# --- T-CTX-001: agent_has_ctx returns 0 when Ctx > 0 ---
+
+@test "T-CTX-001: agent_has_ctx returns 0 (has context) when Ctx is non-zero" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="◦ Working on task (12s • esc to interrupt)
+API Response  ↑ 1.2k tokens   Ctx: 33.5k  ↓ 512 tokens"
+        source "'"$TEST_HARNESS"'"
+        agent_has_ctx
+    '
+    [ "$status" -eq 0 ]
+}
+
+# --- T-CTX-002: agent_has_ctx returns 1 when Ctx is absent or zero ---
+
+@test "T-CTX-002: agent_has_ctx returns 1 (no context) when Ctx is absent" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="› prompt
+  ? for shortcuts                100% context left"
+        source "'"$TEST_HARNESS"'"
+        agent_has_ctx
+    '
+    [ "$status" -eq 1 ]
+}
+
+# --- T-ESC-006: Phase 3 skips /clear when agent has active Ctx ---
+
+@test "T-ESC-006: Phase 3 escalation skips /clear when agent has active Ctx (MCP in progress)" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="API Response  ↑ 1.2k tokens   Ctx: 20.9k  ↓ 512 tokens"
+        source "'"$TEST_HARNESS"'"
+        now=$(date +%s)
+        FIRST_UNREAD_SEEN=$((now - 300))  # 5 minutes ago — Phase 3
+        LAST_CLEAR_TS=0
+        normal_count=2
+        age=$((now - FIRST_UNREAD_SEEN))
+        # Simulate Phase 3 Ctx check path
+        if agent_has_ctx; then
+            echo "[SKIP] ESCALATION Phase 3: has active Ctx — deferred"
+            FIRST_UNREAD_SEEN=$now
+            send_wakeup_with_escape "$normal_count"
+        else
+            send_cli_command "/clear"
+            echo "CLEAR_SENT"
+        fi
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "SKIP"
+    ! echo "$output" | grep -q "CLEAR_SENT"
+    ! grep -q "send-keys.*/clear" "$MOCK_LOG"
+}
+
+# --- T-ESC-007: Phase 3 sends /clear when agent has no Ctx ---
+
+@test "T-ESC-007: Phase 3 escalation sends /clear when agent has no active Ctx" {
+    run bash -c '
+        MOCK_CAPTURE_PANE="› prompt
+  ? for shortcuts                100% context left"
+        source "'"$TEST_HARNESS"'"
+        now=$(date +%s)
+        FIRST_UNREAD_SEEN=$((now - 300))  # 5 minutes ago — Phase 3
+        LAST_CLEAR_TS=0
+        normal_count=2
+        age=$((now - FIRST_UNREAD_SEEN))
+        # Simulate Phase 3 Ctx check path
+        if agent_has_ctx; then
+            echo "SKIP_DEFERRED"
+        else
+            send_cli_command "/clear"
+            echo "CLEAR_SENT"
+        fi
+    '
+    [ "$status" -eq 0 ]
+    echo "$output" | grep -q "CLEAR_SENT"
+    ! echo "$output" | grep -q "SKIP_DEFERRED"
     grep -q "send-keys.*/clear" "$MOCK_LOG"
 }

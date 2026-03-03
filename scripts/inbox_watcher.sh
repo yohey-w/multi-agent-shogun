@@ -725,6 +725,21 @@ agent_is_busy() {
     fi
 }
 
+# ─── Context usage detection (MCP/long tool safety) ───
+# Returns 0 (true) if agent has non-zero context usage (actively in a session).
+# Returns 1 if context is zero/absent (idle or freshly started).
+# Used by Phase 3 escalation to avoid sending /clear during MCP or long tool calls.
+agent_has_ctx() {
+    local pane_output
+    pane_output=$(timeout 2 tmux capture-pane -t "$PANE_TARGET" -p -J 2>/dev/null || true)
+    # Match patterns like "Ctx: 33.5k", "Ctx(u): 20.9%", "Ctx: 1234"
+    # Non-zero Ctx = agent is actively in a session
+    if echo "$pane_output" | grep -qE 'Ctx(\([a-z]+\))?:[[:space:]]*[1-9][0-9]*(\.[0-9]+)?[k%]?'; then
+        return 0  # has context = busy
+    fi
+    return 1  # no context = idle
+}
+
 # ─── Pane focus detection (human safety) ───
 # If the target pane is currently active, avoid injecting keystrokes.
 pane_is_active() {
@@ -1088,11 +1103,18 @@ for s in data.get('specials', []):
                     FIRST_UNREAD_SEEN=$now  # Reset timer
                     send_wakeup_with_escape "$normal_count"
                 else
-                    echo "[$(date)] ESCALATION Phase 3: Agent $AGENT_ID unresponsive for ${age}s. Sending /clear." >&2
-                    send_cli_command "/clear"
-                    LAST_CLEAR_TS=$now
-                    FIRST_UNREAD_SEEN=0  # Reset — will re-detect on next cycle
-                    NEW_CONTEXT_SENT=0
+                    # Phase 3: /clear (last resort — but skip if agent is actively working)
+                    if agent_has_ctx; then
+                        echo "[$(date)] [SKIP] ESCALATION Phase 3: $AGENT_ID has active Ctx — /clear deferred (MCP or long tool call in progress). Resetting timer." >&2
+                        FIRST_UNREAD_SEEN=$now  # Reset timer
+                        send_wakeup_with_escape "$normal_count"
+                    else
+                        echo "[$(date)] ESCALATION Phase 3: Agent $AGENT_ID unresponsive for ${age}s. Sending /clear." >&2
+                        send_cli_command "/clear"
+                        LAST_CLEAR_TS=$now
+                        FIRST_UNREAD_SEEN=0  # Reset — will re-detect on next cycle
+                        NEW_CONTEXT_SENT=0
+                    fi
                 fi
             else
                 # Cooldown active — fall back to Escape+nudge
