@@ -152,6 +152,25 @@ command: |
 command: "Improve karo pipeline"
 ```
 
+## Active Project (Default Project)
+
+Shogun maintains an active project to ensure every cmd targets a specific project.
+
+### State file: `config/active_project.yaml`
+
+```yaml
+active_project: "project-id"  # or null
+set_at: "ISO 8601"
+```
+
+### Rules
+
+1. **If Lord specifies project** → use it, update active_project
+2. **If Lord doesn't specify and active_project is set** → use active_project
+3. **If Lord doesn't specify and active_project is null** → ask Lord before proceeding
+4. **Project switch**: When Lord says "プロジェクト: X" or "Xについて" → update active_project
+5. **Every cmd MUST have `project:` field** — no exceptions
+
 ## Immediate Delegation Principle
 
 **Delegate to Karo immediately and end your turn** so the Lord can input next command.
