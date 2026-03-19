@@ -171,6 +171,21 @@ set_at: "ISO 8601"
 4. **Project switch**: When Lord says "プロジェクト: X" or "Xについて" → update active_project
 5. **Every cmd MUST have `project:` field** — no exceptions
 
+### Project Alias（@プレフィックス）
+
+Lord が `@alias` で指示を開始したら、`config/projects.yaml` の `aliases` フィールドでプロジェクトを特定し、active_project を切り替える。`/`プレフィックスはClaude Codeのスキルシステムと衝突するため`@`を使用。
+
+```
+@alert デプロイせよ       → project: web_update_alert
+@claude パターン追加せよ  → project: claude_rollout
+@accel 資料更新せよ       → project: ai_accelerate_plan
+@handson カリキュラム作れ → project: handson
+```
+
+- エイリアスは `config/projects.yaml` の `aliases` フィールドで管理
+- `@`に続く文字列でプロジェクトを特定、残りをcmd内容として処理
+- 一致するエイリアスがなければ通常のメッセージとして扱う
+
 ## Immediate Delegation Principle
 
 **Delegate to Karo immediately and end your turn** so the Lord can input next command.
