@@ -148,6 +148,14 @@
 !skills/shogun-screenshot/scripts/
 !skills/shogun-screenshot/scripts/*.sh
 !skills/shogun-screenshot/scripts/*.py
+!skills/laravel-enum-seeder-validator/
+!skills/laravel-enum-seeder-validator/SKILL.md
+!skills/markdown-to-jira-adf-converter/
+!skills/markdown-to-jira-adf-converter/SKILL.md
+!skills/pr-description-updater/
+!skills/pr-description-updater/SKILL.md
+!skills/python-to-lambda-sam-scaffold/
+!skills/python-to-lambda-sam-scaffold/SKILL.md
 
 # Python venv (explicit deny — whitelist patterns like LICENSE leak through !*/)
 .venv/
