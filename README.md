@@ -989,6 +989,63 @@ task:
 
 Silent mode sets `DISPLAY_MODE=silent` as a tmux environment variable. The Karo checks this when writing task YAMLs and omits the `echo_message` field.
 
+### 🌙 11. Overnight Operation Mode (caffeinate)
+
+Run tasks overnight — give a command before bed, wake up to results in `dashboard.md`.
+
+**How it works:**
+
+macOS's built-in `caffeinate` utility prevents the system from sleeping, keeping all tmux agents alive while the lid is closed.
+
+```bash
+# Start (prevent system, display, and idle sleep)
+caffeinate -s -d -i &
+
+# Check PID
+ps aux | grep caffeinate
+
+# Stop
+kill <PID>
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-s` | Prevent system sleep on AC power |
+| `-d` | Prevent display sleep |
+| `-i` | Prevent idle sleep |
+
+**Agent behavior with lid closed:**
+
+| Agent | Behavior |
+|-------|----------|
+| Shogun (shogun:0.0) | Lord's terminal — input stops when lid closes |
+| Karo / Ashigaru / Gunshi (multiagent:0.*) | Continue running inside tmux sessions |
+
+With `caffeinate` active, closing the lid keeps all tmux processes alive. The full pipeline (Karo → Ashigaru → Gunshi) completes autonomously.
+
+**Typical workflow:**
+
+1. Issue a command in the Shogun pane
+2. Run `caffeinate -s -d -i &`
+3. Close the lid and go to sleep
+4. Open the lid in the morning — results are in `dashboard.md`
+
+**Requirements:**
+
+- **AC power adapter must be connected.** On battery, the system may sleep after a few hours despite `caffeinate`.
+
+**Stopping:**
+
+```bash
+# Find the PID
+ps aux | grep caffeinate
+
+# Kill it
+kill <PID>
+```
+
+> **Future plans:** A dedicated skill is being considered to combine `caffeinate` startup, `DISPLAY_MODE=silent` configuration, and morning status check into a single command.
+
 ---
 
 ## 🗣️ SayTask — Task Management for People Who Hate Task Management
