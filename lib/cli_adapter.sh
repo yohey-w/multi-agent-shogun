@@ -1015,16 +1015,18 @@ except Exception:
 #   $1: recommended_model — get_recommended_model() の返り値
 #
 # 返り値:
-#   空き足軽ID (例: "ashigaru4") — 完全一致またはフォールバック
+#   空き足軽ID (例: "ashigaru4") — 完全一致または上位tierフォールバック
+#   "SWITCH:<agent_id>:<required_model>" — 下位tierフォールバック (呼び出し元がmodel-switch要)
 #   全員ビジー → "QUEUE"
 #   エラー → "" (空文字)
 #
 # 使用例:
 #   agent=$(find_agent_for_model "claude-sonnet-4-6")
 #   case "$agent" in
-#     QUEUE) echo "待機キューに積む" ;;
-#     "")    echo "エラー" ;;
-#     *)     echo "足軽: $agent に振る（karo.mdがCLI切り替えを判断）" ;;
+#     QUEUE)    echo "待機キューに積む" ;;
+#     SWITCH:*) echo "model-switch後に使用" ;;
+#     "")       echo "エラー" ;;
+#     *)        echo "足軽: $agent に振る" ;;
 #   esac
 find_agent_for_model() {
     local recommended_model="$1"
@@ -1105,52 +1107,107 @@ except Exception:
         fi
     done
 
-    # フェーズ2: 完全一致が全員ビジー → 任意のアイドル足軽にフォールバック
-    # 殿の方針: 「Codex 5.3が欲しくて Claude Code しか空いていなければ Claude Code で可」
-    # kill/restart は絶対しない。アイドルペインを再利用する。
-    local all_agents
-    all_agents=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+    # フェーズ2/3: 完全一致が全員ビジー → tier順フォールバック
+    # フェーズ2: 上位tier（max_bloom高い）を先に探す → agent_idをそのまま返す
+    # フェーズ3: 下位tier（max_bloom低い）を次に探す → "SWITCH:<agent_id>:<required_model>" 形式で返す
+    local tiers_output upper_tier lower_tier
+    tiers_output=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
 import yaml
 
 try:
     with open('${settings}') as f:
         cfg = yaml.safe_load(f) or {}
+    tiers = cfg.get('capability_tiers', {})
     agents = cfg.get('cli', {}).get('agents', {})
-    results = [k for k in agents if k.startswith('ashigaru')]
-    results.sort(key=lambda x: int(x.replace('ashigaru', '')) if x.replace('ashigaru', '').isdigit() else 99)
-    print(' '.join(results))
+    candidates_set = set('${candidates}'.split()) if '${candidates}' else set()
+
+    def get_max_bloom(model):
+        spec = tiers.get(model)
+        if isinstance(spec, dict):
+            return spec.get('max_bloom', 0)
+        return 0
+
+    req_bloom = get_max_bloom('${recommended_model}')
+
+    def sort_key(x):
+        num = x.replace('ashigaru', '')
+        return int(num) if num.isdigit() else 99
+
+    upper_tier = []
+    lower_tier = []
+    for agent_id in sorted(agents.keys(), key=sort_key):
+        if not agent_id.startswith('ashigaru'):
+            continue
+        if agent_id in candidates_set:
+            continue
+        spec = agents[agent_id]
+        if not isinstance(spec, dict):
+            continue
+        agent_bloom = get_max_bloom(spec.get('model', ''))
+        if agent_bloom > req_bloom:
+            upper_tier.append(agent_id)
+        elif 0 < agent_bloom < req_bloom:
+            lower_tier.append(agent_id)
+
+    print(' '.join(upper_tier))
+    print(' '.join(lower_tier))
 except Exception:
-    pass
+    print('')
+    print('')
 " 2>/dev/null)
 
-    local fallback
-    for fallback in $all_agents; do
-        # 既に candidates でチェック済みはスキップ
-        if [[ " $candidates " == *" $fallback "* ]]; then
-            continue
-        fi
+    local tiers_lines
+    mapfile -t tiers_lines <<< "$tiers_output"
+    local upper_tier="${tiers_lines[0]:-}"
+    local lower_tier="${tiers_lines[1]:-}"
 
-        local fb_pane
-        fb_pane=$(tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} #{@agent_id}' 2>/dev/null \
-            | awk -v agent="$fallback" '$2 == agent {print $1}' | head -1)
+    # フェーズ2: 上位tierアイドルを探す
+    local upper_agent
+    for upper_agent in $upper_tier; do
+        local up_pane
+        up_pane=$(tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} #{@agent_id}' 2>/dev/null \
+            | awk -v agent="$upper_agent" '$2 == agent {print $1}' | head -1)
 
-        if [[ -z "$fb_pane" ]]; then
-            # tmuxセッションなし（テスト環境）→ フォールバック候補を返す
-            echo "$fallback"
+        if [[ -z "$up_pane" ]]; then
+            # tmuxセッションなし（テスト環境）→ 上位tier候補をそのまま返す
+            echo "$upper_agent"
             return 0
         fi
 
         if declare -f agent_is_busy_check >/dev/null 2>&1; then
-            agent_is_busy_check "$fb_pane" 2>/dev/null
-            local fb_rc=$?
-            if [[ $fb_rc -eq 1 ]]; then
-                echo "$fallback"
+            agent_is_busy_check "$up_pane" 2>/dev/null
+            local up_rc=$?
+            if [[ $up_rc -eq 1 ]]; then
+                echo "$upper_agent"
                 return 0
             fi
         fi
     done
 
-    # 全足軽ビジー → キュー待ち
+    # フェーズ3: 下位tierアイドルを探す（呼び出し元のmodel-switch要）
+    local lower_agent
+    for lower_agent in $lower_tier; do
+        local lo_pane
+        lo_pane=$(tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} #{@agent_id}' 2>/dev/null \
+            | awk -v agent="$lower_agent" '$2 == agent {print $1}' | head -1)
+
+        if [[ -z "$lo_pane" ]]; then
+            # tmuxセッションなし（テスト環境）→ SWITCH形式で返す
+            echo "SWITCH:${lower_agent}:${recommended_model}"
+            return 0
+        fi
+
+        if declare -f agent_is_busy_check >/dev/null 2>&1; then
+            agent_is_busy_check "$lo_pane" 2>/dev/null
+            local lo_rc=$?
+            if [[ $lo_rc -eq 1 ]]; then
+                echo "SWITCH:${lower_agent}:${recommended_model}"
+                return 0
+            fi
+        fi
+    done
+
+    # フェーズ4: 全足軽ビジー → キュー待ち
     echo "QUEUE"
     return 0
 }

@@ -123,6 +123,60 @@ YAML
 cli:
   default: kimi
 YAML
+
+    # find_agent_for_model テスト用: 上位tierフォールバック
+    # sonnet足軽なし、opus足軽(ashigaru1)のみ → 上位tierとして ashigaru1 を返す
+    cat > "${TEST_TMP}/settings_find_upper.yaml" << 'YAML'
+capability_tiers:
+  claude-haiku-4-5-20251001:
+    max_bloom: 3
+  claude-sonnet-4-6:
+    max_bloom: 5
+  claude-opus-4-6:
+    max_bloom: 6
+cli:
+  default: claude
+  agents:
+    ashigaru1:
+      type: claude
+      model: claude-opus-4-6
+YAML
+
+    # find_agent_for_model テスト用: 下位tier model-switch
+    # sonnet足軽なし、opus足軽なし、haiku足軽(ashigaru3)のみ → SWITCH:ashigaru3:claude-sonnet-4-6
+    cat > "${TEST_TMP}/settings_find_lower.yaml" << 'YAML'
+capability_tiers:
+  claude-haiku-4-5-20251001:
+    max_bloom: 3
+  claude-sonnet-4-6:
+    max_bloom: 5
+  claude-opus-4-6:
+    max_bloom: 6
+cli:
+  default: claude
+  agents:
+    ashigaru3:
+      type: claude
+      model: claude-haiku-4-5-20251001
+YAML
+
+    # find_agent_for_model テスト用: 完全一致回帰
+    # sonnet足軽(ashigaru2)が存在 → ashigaru2 を返す
+    cat > "${TEST_TMP}/settings_find_exact.yaml" << 'YAML'
+capability_tiers:
+  claude-haiku-4-5-20251001:
+    max_bloom: 3
+  claude-sonnet-4-6:
+    max_bloom: 5
+  claude-opus-4-6:
+    max_bloom: 6
+cli:
+  default: claude
+  agents:
+    ashigaru2:
+      type: claude
+      model: claude-sonnet-4-6
+YAML
 }
 
 teardown() {
@@ -747,4 +801,29 @@ YAML
     result=$(build_cli_command "ashigaru5")
     [[ "$result" != MAX_THINKING_TOKENS* ]]
     [[ "$result" == codex* ]]
+}
+
+# =============================================================================
+# find_agent_for_model テスト
+# =============================================================================
+
+@test "find_agent_for_model: 完全一致アイドルあり → 完全一致を返す (回帰)" {
+    # sonnet足軽(ashigaru2)が存在 → ashigaru2 を返す（上位tierより優先）
+    load_adapter_with "${TEST_TMP}/settings_find_exact.yaml"
+    result=$(find_agent_for_model "claude-sonnet-4-6")
+    [ "$result" = "ashigaru2" ]
+}
+
+@test "find_agent_for_model: 完全一致全員ビジー・上位tierアイドルあり → 上位tier返却" {
+    # sonnet足軽なし、opus足軽(ashigaru1)がアイドル → ashigaru1 を返す（SWITCHなし）
+    load_adapter_with "${TEST_TMP}/settings_find_upper.yaml"
+    result=$(find_agent_for_model "claude-sonnet-4-6")
+    [ "$result" = "ashigaru1" ]
+}
+
+@test "find_agent_for_model: 完全一致+上位tier全員ビジー・下位tierのみアイドル → SWITCH返却" {
+    # sonnet足軽なし、opus足軽なし、haiku足軽(ashigaru3)がアイドル → SWITCH形式で返す
+    load_adapter_with "${TEST_TMP}/settings_find_lower.yaml"
+    result=$(find_agent_for_model "claude-sonnet-4-6")
+    [ "$result" = "SWITCH:ashigaru3:claude-sonnet-4-6" ]
 }
