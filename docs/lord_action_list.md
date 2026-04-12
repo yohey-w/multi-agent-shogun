@@ -1,5 +1,5 @@
 # 殿のアクションリスト
-最終更新: 2026-04-11
+最終更新: 2026-04-12
 
 ## 優先度★★★（ボトルネック・すぐやれる）
 ここが終わらないと公開プロセスが進まない項目:
@@ -10,13 +10,13 @@
 - [ ] 公開用メールアドレス決定（1分）
   - 全拡張のprivacy-policy.mdに記載する連絡先
   - 推奨: 専用のGmail作成 or 既存メール
-- [ ] GitHub makotonos組織にリポ4つ作成（5分）
-  - kindle-snap, browse-to-anki, page-breaker, meme-snap
+- [ ] GitHub makotonos組織にリポ5つ作成（5分）
+  - kindle-snap, browse-to-anki, page-breaker, meme-snap, cat-stroll
   - publicリポ推奨（プライバシーポリシーURLに使うため）
   - ※yohey-w組織には絶対にpushしない
 
 ## 優先度★★（公開プロセス — ★★★完了後）
-4拡張それぞれに対して:
+5拡張それぞれに対して:
 
 ### KindleSnap
 - [ ] 連絡先メールアドレス → privacy-policy.md のTODO/example.com部分を置換
@@ -66,7 +66,19 @@
 - [ ] スクリーンショット撮影（5分、1280x800 PNG、最低1枚推奨3枚）
 - [ ] Chrome Web Store提出（10分）
 
-**推定所要時間**: 各拡張15分 × 4 = 約1時間
+### CatStroll
+- [ ] 連絡先メールアドレス → privacy-policy.md のTODO/example.com部分を置換
+- [ ] gitリモート設定+push（5分）
+  ```bash
+  cd /Users/mizunomakoto/Project/makotoProj/chrome_extensions/cat-stroll/
+  git remote add origin https://github.com/makotonos/cat-stroll.git
+  git push -u origin main
+  ```
+- [ ] ローカルテスト（10分）
+- [ ] スクリーンショット撮影（5分、1280x800 PNG、最低1枚推奨3枚）
+- [ ] Chrome Web Store提出（10分）
+
+**推定所要時間**: 各拡張15分 × 5 = 約1時間15分
 
 ## 優先度★（余裕がある時）
 

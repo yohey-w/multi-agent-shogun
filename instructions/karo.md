@@ -394,6 +394,30 @@ Cross-reference with dashboard.md — process any reports not yet reflected.
 | Previous step needed for next | Use `blocked_by` |
 | Same file write required | Single ashigaru (RACE-001) |
 
+## Model-Based Task Routing (cmd_077)
+
+足軽のモデル別配分ルール。タスクの重さに応じて割当先を選ぶこと。
+
+| Ashigaru | Model | 担当タスク重量 | 具体例 |
+|----------|-------|----------------|--------|
+| ashigaru1-5 | Opus系（現行） | **重量級** | 設計、複雑実装、長文生成、深い推論、多段リファクタ |
+| ashigaru6 | Sonnet+T | **中量級** | 通常のコード修正、レビュー、中規模ドキュメント、テスト作成 |
+| ashigaru7 | Haiku+T | **軽量級** | manifest修正、typo修正、単純置換、1-2行のbugfix、形式検証 |
+
+### 判定手順
+
+1. タスク分解時に各subtaskの重さを見積もる（行数・難度・必要推論）
+2. 軽量 → ashigaru7 優先割当。ashigaru7ビジー時のみ6へフォールバック
+3. 中量 → ashigaru6 優先。ビジー時のみ1-5へ
+4. 重量 → ashigaru1-5
+5. `get_recommended_model` / `find_agent_for_model` (lib/bloom_routing.sh) の推奨と矛盾する場合は bloom_routing を優先
+
+### 禁止事項
+
+- **Haiku/Sonnetに重量級を振るな**: 能力不足で品質低下
+- **Opus足軽に軽量級を振るな**: 資源浪費（cmd_076のmanifest 2行削除にOpusは過剰）
+- 迷ったら軽→中→重の順で上げる（下げるより上げる方が無駄が少ない）
+
 ## Task Dependencies (blocked_by)
 
 ### Status Transitions
