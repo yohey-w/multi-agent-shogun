@@ -1,5 +1,5 @@
 # 将軍システム ダッシュボード
-最終更新: 2026-04-12 21:43
+最終更新: 2026-04-12 22:44
 
 ## 🐸 Frog / ストリーク
 | 項目 | 値 |
@@ -14,8 +14,10 @@
 - **ai_accelerate_plan**: プレゼン資料完成済み
 - **multi-agent-shogun**: cmd_058完了（dashboard簡潔化済み）
 
-## 🔄 進行中
-- (なし — 全足軽待機中)
+## 🔄 進行中 (殿外出、自律進行中、帰宅まで約6h)
+- **cmd_079** pixel art自動化調査 → 足軽3(SD系 8dd9250 TOP1=PixelLab.ai★5)・4(商用API 5f43276 TOP1=Aseprite CLI+gpt-image-1-mini)・5(ローカル 9852808 TOP1=Pillow★5) 全3軸完了。足軽7(統合README+全体TOP3+呼出方針)着手中
+- **cmd_080** 非描画系高ROIツール評価 → 足軽1(brainstorm 44debcc、12案+TOP3私見完了) + gunshi(最終4軸評価ランキング+TOP1 MVP仕様起案中)
+- **cmd_081** ✅殿作業可視化完了 → 足軽2(メイン分析 2c9b380 自動化推奨5件: 🚨対応トラッカー/E2E/ストア公開/ブランチ整理/意思決定待ち行列) + 足軽6(補助集計 c196d4b)
 
 ## ✅ 直近の完了（cmd_051以降）
 - **cmd_078** (04-12) CatStroll アイコン生成(9fe372b)。Pillowで琥珀色フラット猫デザインicon16/48/128.png透過PNG生成、webpack CopyPlugin でdist/icons/反映済、generate_icons.py同梱。cmd_077ルール初適用(足軽6号Sonnet)。**殿のChrome再読込確認待ち→🚨要対応**。

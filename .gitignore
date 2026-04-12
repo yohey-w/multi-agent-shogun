@@ -120,6 +120,7 @@
 !docs/non_visual_candidates_brainstorm.md
 !docs/pixel_art_automation/
 !docs/pixel_art_automation/*.md
+!docs/pixel_art_automation_research.md
 
 # Screenshots (masked — no secrets)
 !images/
