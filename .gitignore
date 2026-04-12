@@ -113,6 +113,9 @@
 # Docs
 !docs/
 !docs/philosophy.md
+!docs/chrome_extension_publish_guide.md
+!docs/lord_action_list.md
+!docs/lord_work_map_stats.md
 
 # Screenshots (masked — no secrets)
 !images/
