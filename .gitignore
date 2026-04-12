@@ -117,6 +117,8 @@
 !docs/lord_action_list.md
 !docs/lord_work_map_stats.md
 !docs/lord_work_map.md
+!docs/pixel_art_automation/
+!docs/pixel_art_automation/*.md
 
 # Screenshots (masked — no secrets)
 !images/
