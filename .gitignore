@@ -196,6 +196,22 @@ tests/specs/osato_lms_*
 !.github/workflows/
 !.github/workflows/*.yml
 
+# Experiments (OSS MVPs, TOP-N spec outputs)
+!experiments/
+!experiments/*/
+!experiments/*/*.md
+!experiments/*/*.yml
+!experiments/*/*.json
+!experiments/*/Dockerfile
+!experiments/*/src/
+!experiments/*/src/*.ts
+!experiments/*/test/
+!experiments/*/test/*.ts
+# Explicit re-exclude: never commit installed deps or build output.
+experiments/*/node_modules/
+experiments/*/dist/
+experiments/*/package-lock.json
+
 # Android companion app
 !android/
 !android/**
