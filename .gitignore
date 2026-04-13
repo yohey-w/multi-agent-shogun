@@ -183,6 +183,7 @@ tests/specs/osato_lms_*
 
 # CI/CD
 !.github/
+!.github/FUNDING.yml
 !.github/workflows/
 !.github/workflows/*.yml
 

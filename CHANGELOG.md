@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.4.2] - 2026-04-10
+
+### Added
+- `first_setup.sh`: auto-install OSS skills to `~/.claude/skills/` on setup (skips existing, idempotent)
+
 ## [4.4.1] - 2026-03-28
 
 ### Added
