@@ -313,6 +313,33 @@ Before assigning tasks, ask yourself these five questions:
     ashigaru2: Complete beginner persona — UX simulation
 ```
 
+## Task Estimation (estimated_time)
+
+【必須】サブタスク分解時、各 subtask YAML に `estimated_time` を記載すること。
+
+### 見積もりフォーマット
+
+```yaml
+estimated_time: "15min"   # 〜59分は min 単位
+estimated_time: "2h"      # 1時間以上は h 単位（端数5min丸め）
+```
+
+### 参考時間テーブル
+
+| タスク種別 | 参考時間 |
+|-----------|---------|
+| FE 1ファイル修正（小） | 5-10min |
+| BE 1ファイル修正 | 10-15min |
+| API新規追加 | 20-30min |
+| 調査レポート作成 | 15-30min |
+| ビルド確認 | 5min |
+| サーバー起動確認 | 5-10min |
+
+### 超過時の報告ルール
+
+全 subtask の `estimated_time` 合計が cmd の `estimated_time` を
+**1.5倍以上** 超える場合 → dashboard `🚨 要対応` に報告すること。
+
 ## Task YAML Format
 
 ```yaml
@@ -321,6 +348,7 @@ task:
   task_id: subtask_001
   parent_cmd: cmd_001
   bloom_level: L3        # L1-L3=Ashigaru, L4-L6=Gunshi
+  estimated_time: "15min"
   description: "Create hello1.md with content 'おはよう1'"
   target_path: "/mnt/c/tools/multi-agent-shogun/hello1.md"
   echo_message: "🔥 足軽1号、先陣を切って参る！八刃一志！"
@@ -332,6 +360,7 @@ task:
   task_id: subtask_003
   parent_cmd: cmd_001
   bloom_level: L6
+  estimated_time: "30min"
   blocked_by: [subtask_001, subtask_002]
   description: "Integrate research results from ashigaru 1 and 2"
   target_path: "/mnt/c/tools/multi-agent-shogun/reports/integrated_report.md"

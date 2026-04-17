@@ -26,9 +26,10 @@ files:
   ntfy_inbox: queue/ntfy_inbox.yaml    # Incoming ntfy messages from Lord's phone
 
 cmd_format:
-  required_fields: [id, timestamp, purpose, acceptance_criteria, command, project, priority, status]
+  required_fields: [id, timestamp, purpose, acceptance_criteria, command, project, priority, status, estimated_time]
   purpose: "One sentence — what 'done' looks like. Verifiable."
   acceptance_criteria: "List of testable conditions. ALL must be true for cmd=done."
+  estimated_time: "Approximate total time for this cmd (e.g. 30min, 2h). Best-effort estimate by Shogun."
   validation: "Karo checks acceptance_criteria at Step 11.7. Ashigaru checks parent_cmd purpose on task completion."
 
 task_status_transitions:
