@@ -1762,22 +1762,6 @@ tmux respawn-pane -t shogun:0.0 -k 'claude --model opus --dangerously-skip-permi
 
 ---
 
-## スポンサー
-
-このプロジェクトはスポンサーによって支えられています。
-
-<a href="https://github.com/sponsors/yohey-w">
-  <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?style=for-the-badge&logo=github-sponsors" alt="Sponsor">
-</a>
-
-| Tier | 特典 |
-|------|------|
-| ☕ $5/月 | スポンサーセクションに名前掲載 |
-| 🏯 $25/月 | 新リリースへの早期アクセス |
-| ⚔️ $100/月 | Issue/PRの優先対応（48h以内） |
-| 🎖️ $500/月 | 月1回の1on1コンサルテーション |
-| 🏛️ $1,000/月 | READMEにロゴ掲載 + 四半期戦略コンサル |
-
 ## コントリビューション
 
 Issue、Pull Requestを歓迎します。
@@ -1803,7 +1787,5 @@ MIT License - 詳細は [LICENSE](LICENSE) を参照。
 **コマンド1つ。エージェント8体。連携コストゼロ。**
 
 ⭐ 役に立ったらスターをお願いします — 他の人にも見つけてもらえます。
-
-💖 [このプロジェクトをスポンサーする](https://github.com/sponsors/yohey-w)
 
 </div>

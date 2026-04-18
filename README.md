@@ -1809,22 +1809,6 @@ Even if you're not comfortable with keyboard shortcuts, you can switch, scroll, 
 
 ---
 
-## Sponsors
-
-This project is funded by sponsors. Your support keeps it free and actively maintained.
-
-<a href="https://github.com/sponsors/yohey-w">
-  <img src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?style=for-the-badge&logo=github-sponsors" alt="Sponsor">
-</a>
-
-| Tier | Perks |
-|------|-------|
-| ☕ $5/mo | Name in sponsors section |
-| 🏯 $25/mo | Early access to new releases |
-| ⚔️ $100/mo | Priority issue/PR response (48h) |
-| 🎖️ $500/mo | Monthly 1:1 consultation |
-| 🏛️ $1,000/mo | Logo in README + quarterly strategy session |
-
 ## Contributing
 
 Issues and pull requests are welcome.
@@ -1848,7 +1832,5 @@ Based on [Claude-Code-Communication](https://github.com/Akira-Papa/Claude-Code-C
 **One command. Eight agents. Zero coordination cost.**
 
 ⭐ Star this repo if you find it useful — it helps others discover it.
-
-💖 [Sponsor this project](https://github.com/sponsors/yohey-w) to keep it free.
 
 </div>
