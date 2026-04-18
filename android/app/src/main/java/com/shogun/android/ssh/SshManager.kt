@@ -11,7 +11,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import com.shogun.android.util.AppLogger
-import java.io.File
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -64,7 +63,7 @@ class SshManager private constructor() {
             lastHost = host
             lastPort = port
             lastUser = user
-            lastKeyPath = privateKeyPath.trim()
+            lastKeyPath = privateKeyPath
             lastPassword = password
             connectInternal()
         }
@@ -74,23 +73,20 @@ class SshManager private constructor() {
         return try {
             val trimmedPassword = lastPassword.trim()
             val jsch = JSch()
-            val privateKeyIdentity = loadPrivateKeyIdentity()
-            if (privateKeyIdentity != null) {
-                val (identityName, privateKeyBytes) = privateKeyIdentity
-                val passphraseBytes = trimmedPassword.takeIf { it.isNotEmpty() }?.toByteArray()
-                jsch.addIdentity(identityName, privateKeyBytes, null, passphraseBytes)
+            if (lastKeyPath.isNotBlank()) {
+                jsch.addIdentity(lastKeyPath)
             }
             val newSession = jsch.getSession(lastUser, lastHost, lastPort)
             val config = Properties()
             config["StrictHostKeyChecking"] = "no"
             config["MaxAuthTries"] = "2"
-            if (privateKeyIdentity != null) {
+            if (lastKeyPath.isNotBlank()) {
                 config["PreferredAuthentications"] = "publickey"
             } else {
                 config["PreferredAuthentications"] = "keyboard-interactive,password"
             }
             newSession.setConfig(config)
-            if (privateKeyIdentity == null && trimmedPassword.isNotEmpty()) {
+            if (lastKeyPath.isBlank() && trimmedPassword.isNotEmpty()) {
                 newSession.setPassword(trimmedPassword)
             }
             var passwordAttempted = false
@@ -198,28 +194,16 @@ class SshManager private constructor() {
             val channel = s.openChannel("exec") as ChannelExec
             channel.setCommand(cmd)
             val inputStream = channel.inputStream
-            val errStream = channel.errStream
             channel.connect(5000)
             val baos = ByteArrayOutputStream()
-            val errBaos = ByteArrayOutputStream()
             val buffer = ByteArray(4096)
             while (true) {
                 val n = inputStream.read(buffer)
                 if (n < 0) break
                 baos.write(buffer, 0, n)
             }
-            // Read any remaining stderr
-            while (errStream.available() > 0) {
-                val n = errStream.read(buffer)
-                if (n < 0) break
-                errBaos.write(buffer, 0, n)
-            }
             channel.disconnect()
             val out = baos.toString("UTF-8")
-            val err = errBaos.toString("UTF-8")
-            if (err.isNotBlank()) {
-                AppLogger.log("SSH", "exec STDERR (${err.length}ch): ${err.take(200)}")
-            }
             AppLogger.log("SSH", "exec OK (${out.length}ch): $shortCmd")
             Result.success(out)
         } catch (e: Exception) {
@@ -247,15 +231,6 @@ class SshManager private constructor() {
             }
             Result.failure(lastError ?: Exception("再接続失敗（${maxAttempts}回試行）"))
         }
-
-    private fun loadPrivateKeyIdentity(): Pair<String, ByteArray>? {
-        val keyPath = lastKeyPath.trim()
-        if (keyPath.isBlank()) return null
-
-        val keyFile = File(keyPath)
-        require(keyFile.isFile) { "SSH秘密鍵が見つかりませぬ: $keyPath" }
-        return keyPath to keyFile.readBytes()
-    }
 
     suspend fun uploadScreenshot(context: Context, imageUri: Uri, projectPath: String = ""): Result<String> =
         withContext(Dispatchers.IO) {

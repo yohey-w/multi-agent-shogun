@@ -3,11 +3,7 @@ package com.shogun.android.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.net.Uri
-import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import com.shogun.android.ui.theme.*
 import com.shogun.android.util.Defaults
@@ -35,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shogun.android.util.AppLogger
 import com.shogun.android.viewmodel.SettingsViewModel
-import java.io.File
 
 @Composable
 fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
@@ -54,21 +48,6 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
     var saved by remember { mutableStateOf(false) }
     var tapCount by remember { mutableIntStateOf(0) }
     var showDebugLog by remember { mutableStateOf(false) }
-    val pickSshKeyLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-
-        runCatching { copySshKeyToAppStorage(context, uri) }
-            .onSuccess { importedPath ->
-                keyPath = importedPath
-                saved = false
-                Toast.makeText(context, "秘密鍵をアプリ領域へコピーしたでござる", Toast.LENGTH_SHORT).show()
-            }
-            .onFailure { error ->
-                Toast.makeText(context, "秘密鍵取込失敗: ${error.message}", Toast.LENGTH_LONG).show()
-            }
-    }
 
     // Debug log dialog
     if (showDebugLog) {
@@ -121,30 +100,13 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             singleLine = true
         )
 
-        Row(
+        OutlinedTextField(
+            value = keyPath,
+            onValueChange = { keyPath = it },
+            label = { Text("SSH秘密鍵パス") },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = keyPath,
-                onValueChange = {
-                    keyPath = it
-                    saved = false
-                },
-                label = { Text("SSH秘密鍵パス") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-
-            OutlinedButton(
-                onClick = { pickSshKeyLauncher.launch(arrayOf("*/*")) },
-                modifier = Modifier.defaultMinSize(minHeight = 56.dp),
-                shape = RoundedCornerShape(4.dp)
-            ) {
-                Text("ファイルを選択")
-            }
-        }
+            singleLine = true
+        )
 
         OutlinedTextField(
             value = password,
@@ -225,34 +187,6 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             )
         }
     }
-}
-
-private fun copySshKeyToAppStorage(context: Context, uri: Uri): String {
-    val resolver = context.contentResolver
-    val displayName = resolver.query(
-        uri,
-        arrayOf(OpenableColumns.DISPLAY_NAME),
-        null,
-        null,
-        null
-    )?.use { cursor ->
-        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
-    }
-    val sanitizedName = (displayName ?: "ssh_key.pem").replace(Regex("[^A-Za-z0-9._-]"), "_")
-    val keyDir = File(context.filesDir, "ssh_keys")
-    if (!keyDir.exists() && !keyDir.mkdirs()) {
-        error("鍵保存先を作成できませぬ")
-    }
-    val targetFile = File(keyDir, "${System.currentTimeMillis()}_$sanitizedName")
-
-    resolver.openInputStream(uri)?.use { input ->
-        targetFile.outputStream().use { output ->
-            input.copyTo(output)
-        }
-    } ?: error("鍵ファイルを開けませぬ")
-
-    return targetFile.absolutePath
 }
 
 @Composable

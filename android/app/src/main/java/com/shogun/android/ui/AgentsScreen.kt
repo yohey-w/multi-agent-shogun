@@ -270,26 +270,14 @@ fun AgentsScreen(
 
         // Rate limit dialog
         if (showRateLimitDialog) {
-            var showRawText by remember { mutableStateOf(false) }
             AlertDialog(
                 onDismissRequest = {
                     showRateLimitDialog = false
                     viewModel.clearRateLimitResult()
                 },
                 title = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SelectionContainer {
-                            Text("Rate Limit Check", color = Kinpaku)
-                        }
-                        if (!rateLimitLoading && rateLimitResult != null) {
-                            TextButton(onClick = { showRawText = !showRawText }) {
-                                Text(if (showRawText) "UI" else "Raw", color = Color(0xFF888888), fontSize = 11.sp)
-                            }
-                        }
+                    SelectionContainer {
+                        Text("Rate Limit Check", color = Kinpaku)
                     }
                 },
                 text = {
@@ -301,16 +289,6 @@ fun AgentsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(color = Kinpaku)
-                        }
-                    } else if (showRawText) {
-                        SelectionContainer {
-                            Text(
-                                text = rateLimitResult ?: "",
-                                color = Zouge,
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.verticalScroll(rememberScrollState())
-                            )
                         }
                     } else {
                         RateLimitContent(rawText = rateLimitResult ?: "")
@@ -570,8 +548,6 @@ private fun RateLimitContent(rawText: String) {
     val claudeMax = data.claudeMax
     val codexQuota = data.codexQuota
     val codexEntries = data.codexEntries
-    val hasAnyData = claudeMax.window5h != null || claudeMax.window7d != null ||
-        codexQuota.account5h != null || codexQuota.model5h != null || codexEntries.isNotEmpty()
     SelectionContainer {
         Column(
             modifier = Modifier
@@ -579,11 +555,6 @@ private fun RateLimitContent(rawText: String) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            if (!hasAnyData && rawText.isNotBlank()) {
-                Text("パース失敗 — Raw出力:", color = Color(0xFFCC4444), fontSize = 11.sp)
-                Text(rawText, color = Zouge, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-            }
-
             // ── Claude Max section ──
             Text("Claude Max", color = Kinpaku, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF555555)))
