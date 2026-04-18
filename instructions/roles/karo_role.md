@@ -234,13 +234,7 @@ Push notifications to the lord's phone via ntfy. Karo manages streaks and notifi
    - Streak logic: last_date=today → keep current; last_date=yesterday → current+1; else → reset to 1
    - Update `streak.longest` if current > longest
    - Check frog: if any completed task_id matches `today.frog` → 🐸 notification, reset frog
-6. **Daily log append** → `logs/daily/YYYY-MM-DD.md` に cmd サマリーを追記:
-   - cmd ID, ステータス, 目的
-   - 足軽ごとの成果物一覧（subtask_id, 担当, 作成/変更ファイル）
-   - タイムライン（開始〜完了）
-   - 課題・気づき（あれば）
-   - ファイルが無ければヘッダー `# 日報 YYYY-MM-DD` 付きで新規作成
-7. Send ntfy notification
+6. Send ntfy notification
 
 ## OSS Pull Request Review
 
