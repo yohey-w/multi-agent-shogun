@@ -91,75 +91,6 @@ for agent in "${ALL_AGENTS[@]}"; do
     esac
 done
 
-capture_tmux_pane_zoomed() {
-    local pane="$1"
-    local start="${2:--80}"
-    local restore_zoom=false
-    local was_zoomed="0"
-    local out=""
-
-    was_zoomed=$(timeout 2 tmux display-message -t "$pane" -p '#{window_zoomed_flag}' 2>/dev/null || echo "0")
-    if [[ "$was_zoomed" != "1" ]]; then
-        tmux resize-pane -t "$pane" -Z 2>/dev/null || true
-        restore_zoom=true
-        sleep 0.2
-    fi
-
-    out=$(tmux capture-pane -t "$pane" -p -J -S "$start" 2>/dev/null || echo "")
-
-    if $restore_zoom; then
-        tmux resize-pane -t "$pane" -Z 2>/dev/null || true
-    fi
-
-    printf '%s' "$out"
-}
-
-capture_codex_status_snapshot() {
-    local pane="$1"
-    local restore_zoom=false
-    local was_zoomed="0"
-    local out=""
-
-    was_zoomed=$(timeout 2 tmux display-message -t "$pane" -p '#{window_zoomed_flag}' 2>/dev/null || echo "0")
-    if [[ "$was_zoomed" != "1" ]]; then
-        tmux resize-pane -t "$pane" -Z 2>/dev/null || true
-        restore_zoom=true
-        sleep 0.2
-    fi
-
-    tmux send-keys -t "$pane" '/status' 2>/dev/null || true
-    sleep 0.3
-    tmux send-keys -t "$pane" Enter 2>/dev/null || true
-    sleep 2
-
-    out=$(tmux capture-pane -t "$pane" -p -J -S -80 2>/dev/null || echo "")
-
-    if $restore_zoom; then
-        tmux resize-pane -t "$pane" -Z 2>/dev/null || true
-    fi
-
-    printf '%s' "$out"
-}
-
-extract_latest_codex_status_block() {
-    awk '
-        />_ OpenAI Codex/ {
-            capture = 1
-            block = ""
-        }
-        capture {
-            block = block $0 ORS
-        }
-        capture && /^╰/ {
-            last = block
-            capture = 0
-        }
-        END {
-            printf "%s", last
-        }
-    ' <<< "$1"
-}
-
 # ═══════════════════════════════════════════════════════
 # Phase 3: Collect data per CLI group
 # ═══════════════════════════════════════════════════════
@@ -298,7 +229,7 @@ print(f'MESSAGES={messages}')
     fi
 fi
 
-# --- 3b: Codex /status from pane (zoom temporarily to avoid narrow tiled-pane truncation) ---
+# --- 3b: Codex /status from pane (no pane movement — use -J to join wrapped lines) ---
 declare -A CODEX_CONTEXT
 CODEX_WARNINGS=""
 CODEX_STATUS="OK"
@@ -327,53 +258,55 @@ if [[ ${#CODEX_AGENTS[@]} -gt 0 ]]; then
         [[ -z "$ctx" ]] && ctx="?"
         CODEX_CONTEXT["$agent"]="$ctx"
 
-        # Quota: capture the latest /status block from a zoomed pane so narrow tiled panes do not
-        # truncate "% left" and reset timestamps.
+        # Quota: send /status to first agent, parse with -J (join wrapped lines)
         if ! $_rl_quota_done; then
-            _status_out=$(capture_tmux_pane_zoomed "$pane" -80)
-            _status_block=$(extract_latest_codex_status_block "$_status_out")
+            # Check if /status output already in scrollback
+            _has_status=$(tmux capture-pane -t "$pane" -p -J -S -60 2>/dev/null \
+                | grep -c '5h limit:' || true)
 
-            if [[ ! "$_status_block" =~ [0-9]+%[[:space:]]left ]]; then
-                _status_out=$(capture_codex_status_snapshot "$pane")
-                _status_block=$(extract_latest_codex_status_block "$_status_out")
+            if [[ "$_has_status" -lt 2 ]]; then
+                # Send /status and wait for output
+                tmux send-keys -t "$pane" '/status' 2>/dev/null
+                sleep 0.3
+                tmux send-keys -t "$pane" Enter 2>/dev/null
+                sleep 2
             fi
 
-            if [[ -n "$_status_block" ]]; then
-                # Extract all "5h limit:" and "Weekly limit:" lines from the newest /status block only.
-                # First occurrence = account-level, second = model-level.
-                _5h_lines=$(printf '%s\n' "$_status_block" | grep '5h limit:' || true)
-                _wk_lines=$(printf '%s\n' "$_status_block" | grep 'Weekly limit:' || true)
+            # Capture with -J to join wrapped lines across narrow pane
+            _status_out=$(tmux capture-pane -t "$pane" -p -J -S -60 2>/dev/null || echo "")
 
-                # Account 5h (first line)
-                _line=$(printf '%s\n' "$_5h_lines" | head -1 || true)
-                if [[ -n "$_line" ]]; then
-                    CODEX_ACCT_5H_LEFT=$(printf '%s\n' "$_line" | grep -oE '[0-9]+% left' | head -1 | grep -oE '[0-9]+' || true)
-                    CODEX_ACCT_5H_RESET=$(printf '%s\n' "$_line" | sed -n 's/.*(resets \([^)]*\)).*/\1/p' | head -1)
-                fi
+            # Extract all "5h limit:" and "Weekly limit:" lines
+            # First occurrence = account-level, second = model-level
+            _5h_lines=$(echo "$_status_out" | grep '5h limit:')
+            _wk_lines=$(echo "$_status_out" | grep 'Weekly limit:')
 
-                # Account Weekly (first line)
-                _line=$(printf '%s\n' "$_wk_lines" | head -1 || true)
-                if [[ -n "$_line" ]]; then
-                    CODEX_ACCT_7D_LEFT=$(printf '%s\n' "$_line" | grep -oE '[0-9]+% left' | head -1 | grep -oE '[0-9]+' || true)
-                    CODEX_ACCT_7D_RESET=$(printf '%s\n' "$_line" | sed -n 's/.*(resets \([^)]*\)).*/\1/p' | head -1)
-                fi
+            # Account 5h (first line)
+            _line=$(echo "$_5h_lines" | head -1)
+            if [[ -n "$_line" ]]; then
+                CODEX_ACCT_5H_LEFT=$(echo "$_line" | grep -oE '[0-9]+% left' | grep -oE '[0-9]+')
+                CODEX_ACCT_5H_RESET=$(echo "$_line" | sed -n 's/.*resets \([^)]*\)).*/\1/p')
+            fi
+            # Account Weekly (first line)
+            _line=$(echo "$_wk_lines" | head -1)
+            if [[ -n "$_line" ]]; then
+                CODEX_ACCT_7D_LEFT=$(echo "$_line" | grep -oE '[0-9]+% left' | grep -oE '[0-9]+')
+                CODEX_ACCT_7D_RESET=$(echo "$_line" | sed -n 's/.*resets \([^)]*\)).*/\1/p')
+            fi
 
-                # Model label (e.g., "GPT-5.3-Codex-Spark")
-                CODEX_MODEL_LABEL=$(printf '%s\n' "$_status_block" | grep -oE 'GPT-[^:]+ limit:' | head -1 | sed 's/ limit:$//' || true)
+            # Model label (e.g., "GPT-5.3-Codex-Spark")
+            CODEX_MODEL_LABEL=$(echo "$_status_out" | grep -oE 'GPT-[^ ]* limit:' | head -1 | sed 's/ limit:$//')
 
-                # Model 5h (second line)
-                _line=$(printf '%s\n' "$_5h_lines" | sed -n '2p' || true)
-                if [[ -n "$_line" ]]; then
-                    CODEX_MODEL_5H_LEFT=$(printf '%s\n' "$_line" | grep -oE '[0-9]+% left' | head -1 | grep -oE '[0-9]+' || true)
-                    CODEX_MODEL_5H_RESET=$(printf '%s\n' "$_line" | sed -n 's/.*(resets \([^)]*\)).*/\1/p' | head -1)
-                fi
-
-                # Model Weekly (second line)
-                _line=$(printf '%s\n' "$_wk_lines" | sed -n '2p' || true)
-                if [[ -n "$_line" ]]; then
-                    CODEX_MODEL_7D_LEFT=$(printf '%s\n' "$_line" | grep -oE '[0-9]+% left' | head -1 | grep -oE '[0-9]+' || true)
-                    CODEX_MODEL_7D_RESET=$(printf '%s\n' "$_line" | sed -n 's/.*(resets \([^)]*\)).*/\1/p' | head -1)
-                fi
+            # Model 5h (second line)
+            _line=$(echo "$_5h_lines" | sed -n '2p')
+            if [[ -n "$_line" ]]; then
+                CODEX_MODEL_5H_LEFT=$(echo "$_line" | grep -oE '[0-9]+% left' | grep -oE '[0-9]+')
+                CODEX_MODEL_5H_RESET=$(echo "$_line" | sed -n 's/.*resets \([^)]*\)).*/\1/p')
+            fi
+            # Model Weekly (second line)
+            _line=$(echo "$_wk_lines" | sed -n '2p')
+            if [[ -n "$_line" ]]; then
+                CODEX_MODEL_7D_LEFT=$(echo "$_line" | grep -oE '[0-9]+% left' | grep -oE '[0-9]+')
+                CODEX_MODEL_7D_RESET=$(echo "$_line" | sed -n 's/.*resets \([^)]*\)).*/\1/p')
             fi
 
             # Mark done if we got at least account 5h

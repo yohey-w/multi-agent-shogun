@@ -118,9 +118,6 @@ echo   ^|  [OK] WSL2 + Ubuntu ready!                                 ^|
 echo   ^|       WSL2 + Ubuntu 準備完了！                             ^|
 echo   +============================================================+
 echo.
-REM Get WSL home directory dynamically
-FOR /F "tokens=*" %%i IN ('wsl -e bash -c "echo $HOME"') DO SET WSL_HOME=%%i
-
 echo   +------------------------------------------------------------+
 echo   ^|  [NEXT] Open Ubuntu and follow these steps:               ^|
 echo   ^|         Ubuntu を開いて以下の手順を実行:                   ^|
@@ -129,11 +126,11 @@ echo   ^|                                                            ^|
 echo   ^|  First time only / 初回のみ:                               ^|
 echo   ^|    1. Set username and password when prompted              ^|
 echo   ^|       ユーザー名とパスワードを設定                        ^|
-echo   ^|    2. cd %WSL_HOME%/multi-agent-shogun
+echo   ^|    2. cd /mnt/c/tools/feature-shogun                      ^|
 echo   ^|    3. ./first_setup.sh                                    ^|
 echo   ^|                                                            ^|
 echo   ^|  Every time you use / 使うたびに:                          ^|
-echo   ^|    cd %WSL_HOME%/multi-agent-shogun
+echo   ^|    cd /mnt/c/tools/feature-shogun                          ^|
 echo   ^|    ./shutsujin_departure.sh                                ^|
 echo   ^|                                                            ^|
 echo   +------------------------------------------------------------+

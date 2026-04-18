@@ -17,7 +17,6 @@
 !LICENSE
 !README.md
 !README_ja.md
-!CHANGELOG.md
 !CONTRIBUTING.md
 !SECURITY.md
 
@@ -183,11 +182,9 @@ tests/specs/osato_lms_*
 
 # CI/CD
 !.github/
-!.github/FUNDING.yml
 !.github/workflows/
 !.github/workflows/*.yml
 
 # Android companion app
 !android/
 !android/**
-.claude/settings.local.json

@@ -150,35 +150,30 @@ fi
 # The flag will be removed naturally when the agent starts its next turn
 # (Claude Code removes it via the busy detection mechanism).
 
-# ─── Extract unread message summaries and build block JSON ───
-# Use a single python3 call with env vars to avoid shell quoting issues.
-# The old approach embedded $SUMMARY in triple-quotes, which broke when
-# inbox content contained quotes or special characters.
-__STOP_HOOK_INBOX="$INBOX" __STOP_HOOK_AGENT_ID_OUT="$AGENT_ID" \
-__STOP_HOOK_UNREAD_COUNT="$UNREAD_COUNT" \
-python3 -c "
-import json, os, yaml
-
-inbox = os.environ['__STOP_HOOK_INBOX']
-agent_id = os.environ['__STOP_HOOK_AGENT_ID_OUT']
-count = int(os.environ['__STOP_HOOK_UNREAD_COUNT'])
-
-summary = ''
+# ─── Extract unread message summaries ───
+SUMMARY=$(python3 -c "
+import yaml, sys, json
 try:
-    with open(inbox, 'r') as f:
+    with open('$INBOX', 'r') as f:
         data = yaml.safe_load(f)
     msgs = data.get('messages', []) if data else []
     unread = [m for m in msgs if not m.get('read', True)]
     parts = []
-    for m in unread[:5]:
+    for m in unread[:5]:  # Max 5 messages in summary
         frm = m.get('from', '?')
         typ = m.get('type', '?')
         content = str(m.get('content', ''))[:80]
         parts.append(f'[{frm}/{typ}] {content}')
-    summary = ' | '.join(parts)
-except Exception:
-    summary = f'inbox未読{count}件あり'
+    print(' | '.join(parts))
+except Exception as e:
+    print(f'inbox parse error: {e}')
+" 2>/dev/null || echo "inbox未読${UNREAD_COUNT}件あり")
 
-reason = f'inbox未読{count}件あり。queue/inbox/{agent_id}.yamlを読んで処理せよ。内容: {summary}'
+# ─── Block the stop — feed inbox info back to agent ───
+python3 -c "
+import json
+count = $UNREAD_COUNT
+summary = '''$SUMMARY'''
+reason = f'inbox未読{count}件あり。queue/inbox/${AGENT_ID}.yamlを読んで処理せよ。内容: {summary}'
 print(json.dumps({'decision': 'block', 'reason': reason}, ensure_ascii=False))
 " 2>/dev/null || echo "{\"decision\":\"block\",\"reason\":\"inbox未読${UNREAD_COUNT}件あり。queue/inbox/${AGENT_ID}.yamlを読んで処理せよ。\"}"
