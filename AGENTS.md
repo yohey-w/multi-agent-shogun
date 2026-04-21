@@ -1,7 +1,7 @@
 ---
 # multi-agent-shogun System Configuration
-version: "3.0"
-updated: "2026-02-07"
+version: "3.1"
+updated: "2026-04-19"
 description: "Codex CLI + tmux multi-agent parallel dev platform with sengoku military hierarchy"
 
 hierarchy: "Lord (human) → Shogun → Karo → Ashigaru 1-7 / Gunshi"
@@ -197,6 +197,16 @@ Layer 4: Session context — volatile (AGENTS.md auto-loaded, instructions/*.md,
 # Project Management
 
 System manages ALL white-collar work, not just self-improvement. Project folders can be external (outside this repo). `projects/` is git-ignored (contains secrets).
+
+# DesignerRepo Hub Boundary (Codex/Lord workflow)
+
+**UNCONDITIONAL**: When Lord tells Codex to use DesignerRepo, workday files, round files, or Shogun handoff flow, Codex is **hub-only** from that point.
+
+1. **Codex direct implementation edits are FORBIDDEN**: Codex must not directly edit implementation files in the target repository, even for "small", "obvious", or "urgent" fixes.
+2. **Codex role is instruction/review only**: Codex must restrict itself to writing or updating DesignerRepo handoff artifacts such as `to_shogun.md`, `from_shogun.md`, `codex_review.md`, `spec.md`, and `closeout.md`, then instruct Shogun what to do.
+3. **Always hand off downward**: If work needs to change product code, tests, configs, or app assets, Codex must write precise instructions for Shogun/Karo and stop there until reports come back.
+4. **No "results were fine" exception**: Even if a direct edit worked out, that does not legitimize the behavior. Treat any such edit as a workflow violation and immediately return to hub-only mode.
+5. **If the request is ambiguous, assume hub-only**: Mention the boundary, update the handoff markdown, and tell Shogun exactly which file to read.
 
 # Shogun Mandatory Rules
 
