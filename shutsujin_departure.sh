@@ -163,7 +163,7 @@ while [[ $# -gt 0 ]]; do
             echo "  -c, --clean         キューとダッシュボードをリセットして起動（クリーンスタート）"
             echo "                      未指定時は前回の状態を維持して起動"
             echo "  -k, --kessen        決戦の陣（全足軽をOpusで起動）"
-            echo "                      未指定時は平時の陣（足軽1-4=GPT-5.4, 足軽5-7=Opus, 軍師=Opus）"
+            echo "                      未指定時は平時の陣（足軽1-4=GPT-5.5, 足軽5-7=Opus, 軍師=Opus）"
             echo "  -s, --setup-only    tmuxセッションのセットアップのみ（Claude起動なし）"
             echo "  -t, --terminal      Windows Terminal で新しいタブを開く"
             echo "  -shell, --shell SH  シェルを指定（bash または zsh）"
@@ -188,11 +188,11 @@ while [[ $# -gt 0 ]]; do
             echo "  将軍:      Opus（デフォルト。--shogun-no-thinkingで無効化）"
             echo "  家老:      Opus"
             echo "  軍師:      Opus"
-            echo "  足軽1-4:   GPT-5.4"
+            echo "  足軽1-4:   GPT-5.5"
             echo "  足軽5-7:   Opus"
             echo ""
             echo "陣形:"
-            echo "  平時の陣（デフォルト）: 足軽1-4=GPT-5.4, 足軽5-7=Opus, 軍師=Opus"
+            echo "  平時の陣（デフォルト）: 足軽1-4=GPT-5.5, 足軽5-7=Opus, 軍師=Opus"
             echo "  決戦の陣（--kessen）:   全足軽+軍師=Opus"
             echo ""
             echo "表示モード:"
@@ -597,7 +597,7 @@ AGENT_IDS=("karo" "ashigaru1" "ashigaru2" "ashigaru3" "ashigaru4" "ashigaru5" "a
 if [ "$KESSEN_MODE" = true ]; then
     MODEL_NAMES=("Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus" "Opus")
 else
-    MODEL_NAMES=("Opus" "GPT-5.4" "GPT-5.4" "GPT-5.4" "GPT-5.4" "Opus" "Opus" "Opus" "Opus")
+    MODEL_NAMES=("Opus" "GPT-5.5" "GPT-5.5" "GPT-5.5" "GPT-5.5" "Opus" "Opus" "Opus" "Opus")
 fi
 
 # CLI Adapter経由でモデル名を動的に上書き
@@ -666,7 +666,7 @@ if [ "$SETUP_ONLY" = false ]; then
     # 平時の陣では足軽1-4をCodex編成にするため、codexコマンドも必須
     if [ "$KESSEN_MODE" = false ] && ! command -v codex &> /dev/null; then
         log_info "⚠️  codex コマンドが見つかりません"
-        echo "  平時の陣では足軽1-4に GPT-5.4 を使用します。"
+        echo "  平時の陣では足軽1-4に GPT-5.5 を使用します。"
         echo "  Codex CLI をインストールしてください:"
         echo "    npm install -g @openai/codex"
         exit 1
@@ -744,7 +744,7 @@ if [ "$SETUP_ONLY" = false ]; then
         done
         log_info "  └─ 足軽1-${_ASHIGARU_COUNT}（決戦の陣）、召喚完了"
     else
-        # 平時の陣: 足軽1-4=GPT-5.4, 足軽5-7=Opus
+        # 平時の陣: 足軽1-4=GPT-5.5, 足軽5-7=Opus
         CODEX_ALT_SCREEN_FLAG=""
         if codex --help 2>&1 | grep -q -- '--no-alt-screen'; then
             CODEX_ALT_SCREEN_FLAG=" --no-alt-screen"
@@ -754,7 +754,7 @@ if [ "$SETUP_ONLY" = false ]; then
             p=$((PANE_BASE + i))
             if [ $i -le 4 ]; then
                 _ashi_cli_type="codex"
-                _ashi_cmd="codex --model gpt-5.4 --dangerously-bypass-approvals-and-sandbox${CODEX_ALT_SCREEN_FLAG}"
+                _ashi_cmd="codex --model gpt-5.5 --dangerously-bypass-approvals-and-sandbox${CODEX_ALT_SCREEN_FLAG}"
             else
                 _ashi_cli_type="claude"
                 _ashi_cmd="claude --model opus --dangerously-skip-permissions"
@@ -796,7 +796,7 @@ if [ "$SETUP_ONLY" = false ]; then
     if [ "$KESSEN_MODE" = true ]; then
         log_success "✅ 決戦の陣で出陣！全軍Opus！"
     else
-        log_success "✅ 平時の陣で出陣（家老=Opus, 足軽1-4=GPT-5.4, 足軽5-7=Opus, 軍師=Opus）"
+        log_success "✅ 平時の陣で出陣（家老=Opus, 足軽1-4=GPT-5.5, 足軽5-7=Opus, 軍師=Opus）"
     fi
     echo ""
 
