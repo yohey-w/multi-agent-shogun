@@ -1,18 +1,44 @@
-title = "Gitleaks config for multi-agent-shogun"
+title = "agent-orchestra gitleaks config"
+
+[extend]
+useDefault = true
 
 # ============================================
 # Allowlist: 許可パターン（誤検知を防ぐ）
 # ============================================
 
-[allowlist]
-description = "Allowlist for test files, design docs, and README placeholders"
-
-# テストファイル内のダミーキー
+[[allowlist]]
+description = "Test fixtures — known dummy values only, never real credentials"
 paths = [
     '''tests/.*''',
 ]
 
-# 設計書内のサンプルコード（reports/design_*.md）
+[[allowlist]]
+description = "Spec / docs example placeholders (fake keys in markdown)"
+paths = [
+    '''specs/.*\.md$''',
+    '''docs/.*\.md$''',
+    '''.*README.*\.md$''',
+    '''CONTRIBUTING\.md$''',
+    '''CHANGELOG\.md$''',
+    '''SECURITY\.md$''',
+]
+
+[[allowlist]]
+description = "Public extension keys (manifest.json) — RSA pub keys, not secrets"
+paths = [
+    '''.*manifest\.json$''',
+]
+
+[[allowlist]]
+description = "CLAUDE.md / AGENTS.md orchestration instructions"
+paths = [
+    '''CLAUDE\.md$''',
+    '''AGENTS\.md$''',
+]
+
+[[allowlist]]
+description = "Design docs and README placeholders (legacy regexes)"
 regexes = [
     '''reports/design_.*\.md:.*ntn_xxxxx''',
     '''reports/design_.*\.md:.*gsk_xxxxx''',

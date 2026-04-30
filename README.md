@@ -19,6 +19,39 @@ A planner agent decomposes work into specifications and dispatches specialized e
 
 (coming soon — see `docs/getting-started.md` after Phase 8)
 
+## Secret Scan (pre-commit / CI)
+
+This repo uses [gitleaks](https://github.com/gitleaks/gitleaks) to prevent accidental secret commits.
+
+### One-time setup (macOS)
+
+```bash
+# Install tools (choose one)
+brew install gitleaks pre-commit
+# or: pip3 install --user pre-commit
+
+# Install hooks into .git/hooks/
+pre-commit install --hook-type pre-commit
+pre-commit install --hook-type pre-push
+```
+
+### Verify
+
+```bash
+# Full repo scan (no git history required)
+gitleaks detect --source . --config .gitleaks.toml --verbose --no-git
+# Expected: "no leaks found"
+```
+
+### False positives
+
+Allowed paths are declared in `.gitleaks.toml` (specs/docs markdown, test fixtures, manifest.json).
+To suppress a new false positive, add an `[[allowlist]]` entry in `.gitleaks.toml` — never commit a real secret.
+
+### CI
+
+`.github/workflows/secret-scan.yml` runs gitleaks on every push and pull request.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

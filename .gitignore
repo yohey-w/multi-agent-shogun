@@ -1,222 +1,49 @@
-# ══════════════════════════════════════════════════
-# Whitelist-based .gitignore
-# デフォルト全除外 → OSS公開対象のみ許可
-# ══════════════════════════════════════════════════
-
-# Step 1: 全て除外
-*
-
-# Step 2: ディレクトリの探索を許可（中身は個別に許可）
-!*/
-
-# Step 3: OSS公開対象ファイルを許可
-!.gitignore
-!.gitattributes
-!.gitleaks.toml
-!CLAUDE.md
-!LICENSE
-!README.md
-!README_ja.md
-!CHANGELOG.md
-!CONTRIBUTING.md
-!SECURITY.md
-
-# Claude Code settings (spinner verbs only, no secrets)
-!.claude/
-!.claude/settings.json
-
-# Instructions (core OSS)
-!instructions/
-!instructions/shogun.md
-!instructions/karo.md
-!instructions/ashigaru.md
-!instructions/gunshi.md
-
-# Multi-CLI: CLI-specific tool descriptions
-!instructions/cli_specific/
-!instructions/cli_specific/claude_tools.md
-!instructions/cli_specific/codex_tools.md
-!instructions/cli_specific/copilot_tools.md
-!instructions/cli_specific/kimi_tools.md
-
-# Multi-CLI: Build template parts (roles, common sections)
-!instructions/roles/
-!instructions/roles/*.md
-!instructions/common/
-!instructions/common/*.md
-
-# Multi-CLI: Generated instruction files (built by build_instructions.sh)
-!instructions/generated/
-!instructions/generated/*.md
-
-# Multi-CLI: CLI adapter library + ntfy auth
-!lib/
-!lib/cli_adapter.sh
-!lib/ntfy_auth.sh
-!lib/agent_status.sh
-
-# Multi-CLI: Codex auto-load file
-!AGENTS.md
-
-# Setup and deployment scripts
-!shutsujin_departure.sh
-!first_setup.sh
-!setup.sh
-!install.bat
-
-# Development tooling
-!Makefile
-
-# Config (sample files only, no secrets)
-!config/
-!config/ntfy_auth.env.sample
-
-# Templates
-!templates/
-!templates/**
-
-# Context README
-!context/
-!context/README.md
-
-# Python venv
-!requirements.txt
-
-# Scripts
-!scripts/
-!scripts/inbox_write.sh
-!scripts/inbox_watcher.sh
-!scripts/watcher_supervisor.sh
-!scripts/ntfy.sh
-!scripts/ntfy_listener.sh
-!scripts/build_instructions.sh
-!scripts/slim_yaml.sh
-!scripts/slim_yaml.py
-!scripts/seo_qc.py
-!scripts/seo_qc.sh
-!scripts/stop_hook_inbox.sh
-!scripts/agent_status.sh
-!scripts/ratelimit_check.sh
-!scripts/switch_cli.sh
-!scripts/archive_queue.py
-
-
-# SayTask (sample template only, not actual data)
-!saytask/
-!saytask/streaks.yaml.sample
-
-# Reports (private — not tracked)
-
-# Memory (MEMORY.md is private; only the sample template is OSS)
-!memory/
-!memory/MEMORY.md.sample
-
-# Docs
-!docs/
-!docs/philosophy.md
-!docs/chrome_extension_publish_guide.md
-!docs/lord_action_list.md
-!docs/lord_work_map_stats.md
-!docs/lord_work_map.md
-!docs/non_visual_candidates_brainstorm.md
-!docs/non_visual_tool_ranking.md
-!docs/top1_mvp_spec.md
-!docs/pixel_art_automation/
-!docs/pixel_art_automation/*.md
-!docs/pixel_art_automation_research.md
-
-# Screenshots (masked — no secrets)
-!images/
-!images/company-creed-all-panes.png
-!images/screenshots/
-!images/screenshots/tdd_ndd_rdd.png
-!images/screenshots/masked/
-!images/screenshots/masked/ntfy_saytask_rename.jpg
-!images/screenshots/masked/ntfy_cmd043_progress.jpg
-!images/screenshots/masked/ntfy_bloom_oc_test.jpg
-!images/screenshots/masked/ntfy_persona_eval_complete.jpg
-!images/screenshots/masked/ntfy_tasklist_v1_before.jpg
-!images/screenshots/masked/ntfy_tasklist_v2_aligned.jpg
-!images/screenshots/hero/
-!images/screenshots/hero/latest-translucent-20260210-190453.png
-!images/screenshots/hero/latest-translucent-20260208-084602.png
-
-# Skills (public OSS skills committed to repo)
-!skills/
-!skills/skill-creator/
-!skills/skill-creator/SKILL.md
-!skills/shogun-agent-status/
-!skills/shogun-agent-status/SKILL.md
-!skills/shogun-model-list/
-!skills/shogun-model-list/SKILL.md
-!skills/shogun-bloom-config/
-!skills/shogun-bloom-config/SKILL.md
-!skills/shogun-model-switch/
-!skills/shogun-model-switch/SKILL.md
-!skills/shogun-readme-sync/
-!skills/shogun-readme-sync/SKILL.md
-!skills/shogun-screenshot/
-!skills/shogun-screenshot/SKILL.md
-!skills/shogun-screenshot/scripts/
-!skills/shogun-screenshot/scripts/*.sh
-!skills/shogun-screenshot/scripts/*.py
-!.claude/skills/archive-queue/
-!.claude/skills/archive-queue/SKILL.md
-
-# Python venv (explicit deny — whitelist patterns like LICENSE leak through !*/)
+# Python
+__pycache__/
+*.pyc
 .venv/
+venv/
 
-# Test specs
-!tests/specs/
-!tests/specs/*.md
-# Client project specs (not OSS — re-exclude after whitelist)
-tests/specs/osato_lms_*
+# Node
+node_modules/
+dist/
+.next/
+.cache/
 
-# Tests
-!tests/
-!tests/*.bats
-!tests/*.sh
-!tests/test_archive_queue.py
-!tests/fixtures/
-!tests/fixtures/*.yaml
-!tests/unit/
-!tests/unit/*.bats
-!tests/integration/
-!tests/integration/*.bats
-!tests/e2e/
-!tests/e2e/*.bats
-!tests/e2e/mock_cli.sh
-!tests/e2e/helpers/
-!tests/e2e/helpers/*.bash
-!tests/e2e/fixtures/
-!tests/e2e/fixtures/*.yaml
-!tests/e2e/mock_behaviors/
-!tests/e2e/mock_behaviors/*.sh
-!tests/test_helper/
-!tests/test_helper/README.md
+# OS
+.DS_Store
+Thumbs.db
 
-# CI/CD
-!.github/
-!.github/workflows/
-!.github/workflows/*.yml
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
 
-# Experiments (OSS MVPs, TOP-N spec outputs)
-!experiments/
-!experiments/*/
-!experiments/*/*.md
-!experiments/*/*.yml
-!experiments/*/*.json
-!experiments/*/Dockerfile
-!experiments/*/src/
-!experiments/*/src/*.ts
-!experiments/*/test/
-!experiments/*/test/*.ts
-# Explicit re-exclude: never commit installed deps or build output.
-experiments/*/node_modules/
-experiments/*/dist/
-experiments/*/package-lock.json
+# Secrets / env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
 
-# Android companion app
-!android/
-!android/**
+# Claude Code session-local
 .claude/settings.local.json
+
+# Project secrets (legacy も含む)
+projects/
+.cdp-chrome-profile/
+
+# v2 移行中の作業ディレクトリ
+legacy/
+
+# auto-memory (User-level、project に持ち込まない)
+.claude/projects/
+
+# misc
+*.log
+*.tmp
+.tmp/
+/tmp/claude/

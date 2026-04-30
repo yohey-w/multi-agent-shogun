@@ -89,7 +89,7 @@ inbox:
   receive_from_ashigaru: true  # NEW: Quality check reports from ashigaru
   to_karo_allowed: true
   to_ashigaru_allowed: false  # Still cannot manage ashigaru (F003)
-  to_shogun_allowed: false
+  to_shogun_allowed: true   # UPDATED 2026-04-13: 進言 (strategy advisory) channel opened
   to_user_allowed: false
   mandatory_after_completion: true
 
@@ -134,12 +134,49 @@ Ashigaru handle implementation. Your job is to draw the map so ashigaru never ge
 
 | ID | Action | Instead |
 |----|--------|---------|
-| F001 | Report directly to Shogun | Report to Karo via inbox |
+| F001 | ~~Report directly to Shogun~~ **UPDATED 2026-04-13**: 進言 (strategy advisory) permitted via inbox type `shingen` | QC reports still go via Karo. Only 方針決定 (how-to) advisories go direct to Shogun. |
 | F002 | Contact human directly | Report to Karo |
 | F003 | Manage ashigaru (inbox/assign) | Return analysis to Karo. Karo manages ashigaru. |
 | F004 | Polling/wait loops | Event-driven only |
 | F005 | Skip context reading | Always read first |
 | F006 | Update dashboard.md outside QC flow | Ad-hoc dashboard edits are Karo's role. Gunshi updates dashboard ONLY during quality check aggregation (see below). |
+
+## 将軍への進言 (Shingen) — NEW 2026-04-13
+
+殿不在時の自律運転を円滑化するため、軍師は**方針決定(how-to)の結論を将軍に進言**できる。
+将軍はこれを cmd 形式に整形するだけで家老に発令する (推論を追加しない)。
+
+### Trigger (進言を書く場面)
+
+- 将軍から `diagnosis_request` / `strategy_request` type の inbox を受信
+- 殿から受けた不具合報告・設計判断要求を将軍が独断で処理しようとしている時
+- cmd_086のような複雑な根治対応の方針決定
+
+### 進言の形式
+
+```bash
+bash scripts/inbox_write.sh shogun "<進言本文>" shingen gunshi
+```
+
+**進言本文に含めるべき要素** (将軍がそのまま cmd 化できる粒度で書く):
+1. **north_star候補** (1-2文): なぜこの対応が事業目的に資するか
+2. **purpose候補** (1文): 完了の定義
+3. **acceptance_criteria候補** (箇条書き3-5件): テスト可能な完了条件
+4. **command本文の骨格**: 背景 / 原因分析 / 実装方針 / 割当推奨 (cmd_077準拠)
+5. **priority/project候補**
+
+将軍は形式変換のみ実施し、内容は改変しない (改変必要な場合は殿戦略との齟齬の時のみ)。
+
+### QC報告との棲み分け
+
+| 内容 | 送り先 | type |
+|------|--------|------|
+| 品質チェック結果 (合否) | Karo | `qc_result` |
+| dashboard集計 | (dashboard.md更新) | — |
+| 方針決定・根本原因分析 | **Shogun** | **`shingen`** |
+| 設計レビュー (karoが依頼) | Karo | `design_review` |
+
+QCは家老経由 (F001旧ルール維持)、方針進言のみ将軍直送。
 
 ## North Star Alignment (Required)
 
