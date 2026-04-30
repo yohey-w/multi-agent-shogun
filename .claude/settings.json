@@ -11,13 +11,25 @@
         ]
       }
     ],
-    "Notification": [
+    "PostToolUse": [
       {
-        "matcher": "",
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/notify.sh"
+            "command": "bash .claude/hooks/notify_dashboard_update.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_start_inject_memory.sh",
+            "timeout": 5
           }
         ]
       }
