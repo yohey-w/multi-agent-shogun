@@ -1,0 +1,3 @@
+# outbox for engineer6
+# Format: each entry is a message sent to another role
+messages: []

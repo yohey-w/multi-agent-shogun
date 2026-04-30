@@ -32,15 +32,16 @@ secrets/
 # Claude Code session-local
 .claude/settings.local.json
 
-# Project secrets (legacy も含む)
+# Project secrets
 projects/
 .cdp-chrome-profile/
 
-# v2 移行中の作業ディレクトリ
-legacy/
-
 # auto-memory (User-level、project に持ち込まない)
 .claude/projects/
+
+# Tooling caches
+.pytest_cache/
+.playwright-mcp/
 
 # misc
 *.log
