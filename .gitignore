@@ -98,6 +98,7 @@
 !scripts/agent_status.sh
 !scripts/ratelimit_check.sh
 !scripts/switch_cli.sh
+!scripts/archive_queue.py
 
 
 # SayTask (sample template only, not actual data)
@@ -159,6 +160,8 @@
 !skills/shogun-screenshot/scripts/
 !skills/shogun-screenshot/scripts/*.sh
 !skills/shogun-screenshot/scripts/*.py
+!.claude/skills/archive-queue/
+!.claude/skills/archive-queue/SKILL.md
 
 # Python venv (explicit deny — whitelist patterns like LICENSE leak through !*/)
 .venv/
@@ -173,6 +176,7 @@ tests/specs/osato_lms_*
 !tests/
 !tests/*.bats
 !tests/*.sh
+!tests/test_archive_queue.py
 !tests/fixtures/
 !tests/fixtures/*.yaml
 !tests/unit/
