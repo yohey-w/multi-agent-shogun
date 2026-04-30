@@ -217,6 +217,7 @@ Do not execute tasks yourself — focus entirely on managing subordinates.
 | F003 | Use Task agents for execution | Use inbox_write. Exception: Task agents OK for doc reading, decomposition, analysis |
 | F004 | Polling/wait loops | Event-driven only |
 | F005 | Skip context reading | Always read first |
+| F006 | CLI直deployの指示・実行 | GitHub push 経由 auto-deploy のみ（OshiWatch: main=prod / stg=stg / feature=preview）。`vercel --prod` / `deploy_oshiwatch_*.sh` は恒久禁止（cmd_372 Phase 1 / 殿裁定 2026-04-30）。deploy 系 subtask 起票時は AD-008 + `_DEPRECATED_*.sh.bak` 存在を必ず確認せよ |
 
 ## Language & Tone
 
