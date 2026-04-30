@@ -1,0 +1,20 @@
+# settings_pattern_b.yaml — Pattern B: Claude + Codex mixed
+# Used for E2E testing with mock CLIs
+language: ja
+shell: bash
+display_mode: silent
+
+cli:
+  default: claude
+  agents:
+    karo:
+      type: claude
+      model: sonnet
+    ashigaru1:
+      type: codex
+    ashigaru2:
+      type: claude
+      model: sonnet
+  validation:
+    fallback: claude
+    strict: false

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Kabuto (samurai helmet) silhouette -->
+    <!-- Crescent moon ornament (maedate) -->
+    <path
+        android:fillColor="#C9A94E"
+        android:pathData="M22,46 Q54,2 86,46 L80,46 Q54,14 28,46 Z"/>
+    <!-- Helmet dome (hachi) -->
+    <path
+        android:fillColor="#C9A94E"
+        android:pathData="M34,46 Q54,30 74,46 L74,62 L34,62 Z"/>
+    <!-- Neck guard tier 1 (shikoro) -->
+    <path
+        android:fillColor="#C9A94E"
+        android:pathData="M30,62 L78,62 L82,68 L26,68 Z"/>
+    <!-- Neck guard tier 2 -->
+    <path
+        android:fillColor="#C9A94E"
+        android:pathData="M26,68 L82,68 L86,74 L22,74 Z"/>
+    <!-- Neck guard tier 3 -->
+    <path
+        android:fillColor="#C9A94E"
+        android:pathData="M22,74 L86,74 L90,82 L18,82 Z"/>
+</vector>

@@ -3,10 +3,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-.pytest_cache/
-
-# Playwright MCP runtime (logs / page captures)
-.playwright-mcp/
 
 # Node
 node_modules/
@@ -39,6 +35,9 @@ secrets/
 # Project secrets (legacy も含む)
 projects/
 .cdp-chrome-profile/
+
+# v2 移行中の作業ディレクトリ
+legacy/
 
 # auto-memory (User-level、project に持ち込まない)
 .claude/projects/

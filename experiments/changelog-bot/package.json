@@ -1,0 +1,39 @@
+{
+  "name": "changelog-bot",
+  "version": "0.1.0",
+  "description": "AI-powered CHANGELOG generation without Conventional Commits. BYOK Claude/OpenAI.",
+  "type": "module",
+  "bin": {
+    "changelog-bot": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": ["changelog", "semver", "llm", "github-action", "release-notes"],
+  "author": "makotonos",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "openai": "^4.60.0",
+    "simple-git": "^3.25.0",
+    "@octokit/graphql": "^7.1.0",
+    "commander": "^12.0.0",
+    "semver": "^7.6.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0",
+    "@types/semver": "^7.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

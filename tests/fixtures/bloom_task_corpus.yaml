@@ -1,0 +1,262 @@
+# Bloom Task Corpus — Issue #53 Dynamic Model Routing テスト用
+# L1-L6 各3件 = 18件
+# Purpose: Bloom分類精度テスト (Dim B) / 出力品質比較実験 (Dim D) に使用
+# verifiable_condition: 自動検証可能な合否基準
+
+bloom_tasks:
+
+  # ─────────────────────────────────────────────
+  # L1: 記憶 (Remember) — パターン適用、定型処理
+  # 正解基準: 正しい値が変更/取得されている
+  # ─────────────────────────────────────────────
+
+  - id: L1-01
+    bloom_level: 1
+    category: remember
+    description: |
+      config/settings.yaml の ntfy_topic の現在の値を読み取り、そのまま報告せよ。
+    expected_output_type: exact_value
+    verifiable_condition: "output matches value in settings.yaml ntfy_topic"
+    difficulty: trivial
+    notes: "YAML読み取りのみ。推論不要。"
+
+  - id: L1-02
+    bloom_level: 1
+    category: remember
+    description: |
+      queue/inbox/ ディレクトリに存在するファイルの一覧を返せ。
+      ファイル名のみ列挙すればよい。
+    expected_output_type: file_list
+    verifiable_condition: "output matches ls queue/inbox/"
+    difficulty: trivial
+    notes: "ディレクトリ列挙のみ。"
+
+  - id: L1-03
+    bloom_level: 1
+    category: remember
+    description: |
+      lib/cli_adapter.sh の総行数を数えて報告せよ。
+    expected_output_type: number
+    verifiable_condition: "output matches wc -l lib/cli_adapter.sh"
+    difficulty: trivial
+    notes: "コマンド実行結果の報告のみ。"
+
+  # ─────────────────────────────────────────────
+  # L2: 理解 (Understand) — 説明、要約、言い換え
+  # 正解基準: 指定の要点を含む説明
+  # ─────────────────────────────────────────────
+
+  - id: L2-01
+    bloom_level: 2
+    category: understand
+    description: |
+      lib/cli_adapter.sh の get_recommended_model() 関数が何をするか、
+      以下の3点を含めて3文以内で説明せよ:
+      (1) 入力は何か、(2) 出力は何か、(3) コスト最適化をどう行うか
+    expected_output_type: explanation
+    verifiable_condition: "explanation contains: bloom_level as input, model name as output, cost_group priority"
+    difficulty: easy
+    notes: "コード読解+説明。実装不要。"
+
+  - id: L2-02
+    bloom_level: 2
+    category: understand
+    description: |
+      scripts/inbox_write.sh が flock を使っている理由を2文で説明せよ。
+      「なぜflockが必要か」「flockなしで何が起きるか」を含めること。
+    expected_output_type: explanation
+    verifiable_condition: "explanation contains: concurrent writes, race condition, data corruption"
+    difficulty: easy
+    notes: "flock概念の理解確認。"
+
+  - id: L2-03
+    bloom_level: 2
+    category: understand
+    description: |
+      config/settings.yaml の bloom_routing を "off" から "auto" に変えると
+      現在の実装では何が起きるか（または起きないか）を説明せよ。
+    expected_output_type: explanation
+    verifiable_condition: "explanation states: currently nothing happens, karo.md not wired, Phase 2-4 not integrated"
+    difficulty: medium
+    notes: "現状の実装理解を確認。「変えても動かない」が正解。"
+
+  # ─────────────────────────────────────────────
+  # L3: 応用 (Apply) — 既知パターンの実装
+  # 正解基準: ファイルが正しく作成/実行される
+  # ─────────────────────────────────────────────
+
+  - id: L3-01
+    bloom_level: 3
+    category: apply
+    description: |
+      tests/fixtures/ に settings_spark_only.yaml を作成せよ。
+      内容: capability_tiers に gpt-5.3-codex-spark (max_bloom: 3, cost_group: chatgpt_pro) のみ定義。
+      bloom_routing: "off" を含める。
+    expected_output_type: file_created
+    verifiable_condition: "file exists AND yaml valid AND only spark in capability_tiers"
+    difficulty: easy
+    notes: "既存YAMLパターンの適用。"
+
+  - id: L3-02
+    bloom_level: 3
+    category: apply
+    description: |
+      以下のbashスクリプトを実行し、結果を /tmp/bloom_test_output.txt に保存せよ:
+      source lib/cli_adapter.sh && get_capability_tier "gpt-5.3-codex-spark"
+      (プロジェクトルートから実行すること)
+    expected_output_type: command_output
+    verifiable_condition: "file /tmp/bloom_test_output.txt contains '3'"
+    difficulty: easy
+    notes: "既存関数の呼び出しパターン適用。"
+
+  - id: L3-03
+    bloom_level: 3
+    category: apply
+    description: |
+      tests/unit/test_dynamic_model_routing.bats から TC-DMR-001 のテストケースのみを
+      実行し、PASSしたかFAILしたかを報告せよ。
+      コマンド: bats --filter "TC-DMR-001" tests/unit/test_dynamic_model_routing.bats
+    expected_output_type: test_result
+    verifiable_condition: "output reports PASS or FAIL with test name"
+    difficulty: easy
+    notes: "テスト実行の適用。"
+
+  # ─────────────────────────────────────────────
+  # L4: 分析 (Analyze) — 調査、原因特定、コードレビュー
+  # 正解基準: 根本原因または問題の特定
+  # ─────────────────────────────────────────────
+
+  - id: L4-01
+    bloom_level: 4
+    category: analyze
+    description: |
+      lib/cli_adapter.sh の get_recommended_model() に bloom_level=0 または bloom_level=7 を
+      渡した場合の動作を調査し、以下を報告せよ:
+      (1) 実際に何が起きるか (2) バグ/脆弱性があるか (3) 改善が必要か
+    expected_output_type: analysis_report
+    verifiable_condition: "report identifies: input validation check at line ~435, exit 1 on invalid"
+    difficulty: medium
+    notes: "コード読解+実行+分析の複合。"
+
+  - id: L4-02
+    bloom_level: 4
+    category: analyze
+    description: |
+      現在の instructions/karo.md を分析し、bloom_routing が "auto" に設定されても
+      動的モデルルーティングが機能しない理由を特定せよ。
+      具体的に: どの関数呼び出しが欠けているか、どのファイルに追加が必要か。
+    expected_output_type: gap_analysis
+    verifiable_condition: "identifies: get_recommended_model() not called, find_agent_for_model() missing, karo.md task distribution step"
+    difficulty: medium
+    notes: "設計ギャップの分析。L4の典型的タスク。"
+
+  - id: L4-03
+    bloom_level: 4
+    category: analyze
+    description: |
+      lib/cli_adapter.sh の get_recommended_model() と needs_model_switch() の
+      テストケース TC-DMR-030 と TC-DMR-110 を読み、これら2つの関数の責務分担を分析せよ。
+      「なぜ2つに分けたか」の設計意図を含めること。
+    expected_output_type: design_analysis
+    verifiable_condition: "analysis distinguishes: selection (what model) vs decision (should switch)"
+    difficulty: medium
+    notes: "テストからの設計意図逆算。"
+
+  # ─────────────────────────────────────────────
+  # L5: 評価 (Evaluate) — 設計妥当性判断、比較推奨
+  # 正解基準: 3案以上 + 根拠つき推奨
+  # ─────────────────────────────────────────────
+
+  - id: L5-01
+    bloom_level: 5
+    category: evaluate
+    description: |
+      find_agent_for_model(recommended_model) 関数の実装方法として以下の3案を評価し、
+      最善案を推奨せよ:
+      案A: settings.yaml の cli.agents を全件スキャンしてモデル一致の足軽を探す
+      案B: capability_tiers を逆引きして対象モデルの足軽リストを事前構築しキャッシュ
+      案C: tmux @model_name オプションをリアルタイムスキャン（設定ファイル非依存）
+      評価基準: 実装コスト、正確性、パフォーマンス、障害耐性
+    expected_output_type: comparative_evaluation
+    verifiable_condition: "response includes: 3 options evaluated, recommendation with 3+ criteria, trade-offs acknowledged"
+    difficulty: hard
+    notes: "L5の典型。比較+根拠つき推奨が必要。Sparkでは3案の深い比較が難しい。"
+
+  - id: L5-02
+    bloom_level: 5
+    category: evaluate
+    description: |
+      VPS での Bloom routing テスト用に ashigaru1-3=Codex-Spark, ashigaru4-5=Sonnet,
+      ashigaru6-7=Opus の混合CLI設定を提案しているが、この設計の妥当性を評価せよ。
+      以下の観点を含めること:
+      (1) 各Bloomレベルに対するカバレッジ (2) 並列処理能力 (3) コスト効率
+      (4) 改善案があれば提案せよ
+    expected_output_type: design_evaluation
+    verifiable_condition: "evaluation covers: coverage gaps (L4 only 2 agents), cost groups, parallelism, at least 1 improvement"
+    difficulty: hard
+    notes: "設計評価。改善提案まで求める。"
+
+  - id: L5-03
+    bloom_level: 5
+    category: evaluate
+    description: |
+      Bloom Taxonomy に基づくモデルルーティングの有効性について、以下の主張を評価せよ:
+      「L5タスク (設計評価) を gpt-5.3-codex-spark (max_bloom=3) で実行しても、
+      プロンプトを工夫すれば品質は claude-sonnet-4-6 と変わらない」
+      この主張の妥当性を、理論的根拠と実証的検証方法を含めて評価せよ。
+    expected_output_type: argument_evaluation
+    verifiable_condition: "evaluation includes: capability limitation argument, empirical test proposal, nuanced conclusion"
+    difficulty: hard
+    notes: "批判的思考を問う。単純肯定/否定でなく根拠が必要。"
+
+  # ─────────────────────────────────────────────
+  # L6: 創造 (Create) — 新規設計、新規アーキテクチャ
+  # 正解基準: 既存にない新規設計要素を含む
+  # ─────────────────────────────────────────────
+
+  - id: L6-01
+    bloom_level: 6
+    category: create
+    description: |
+      Issue #53 Phase 4 (Quality Feedback Accumulation) の具体的な実装設計書を書け。
+      以下を含むこと:
+      (1) model_performance.yaml のスキーマ定義
+      (2) QCスコアの収集タイミングとトリガー設計
+      (3) フィードバックが get_recommended_model() の選択に影響する仕組み
+      (4) 自動劣化検知と閾値設計
+      既存の append_model_performance() 関数の限界を踏まえた上で設計せよ。
+    expected_output_type: design_document
+    verifiable_condition: "document contains: YAML schema, collection trigger, feedback mechanism, degradation threshold"
+    difficulty: expert
+    notes: "Phase 4の設計。既存関数の限界理解が必要。"
+
+  - id: L6-02
+    bloom_level: 6
+    category: create
+    description: |
+      bloom_routing を本番環境に影響を与えずに VPS 上で安全に検証するための
+      "Shadow Mode" アーキテクチャを設計せよ。
+      Shadow Mode の要件:
+      - 全タスクをbloom routing判定するが、実際の配布は従来通り行う
+      - bloom routing が選ぶ予定だった足軽 vs 実際に使われた足軽を記録する
+      - 品質差を記録して統計的有意差を計算する基盤を含む
+      - 本番タスクの遅延を一切増やさない
+    expected_output_type: architecture_design
+    verifiable_condition: "design includes: parallel decision path, logging mechanism, statistical comparison, zero-latency constraint"
+    difficulty: expert
+    notes: "安全な実験設計。Sparkでは要件の複合を処理しきれない。"
+
+  - id: L6-03
+    bloom_level: 6
+    category: create
+    description: |
+      multi-agent-shogun に「タスク→Bloom自動分類→最適モデル選択→実行→品質評価→
+      選定基準更新」の自律改善ループを追加するとしたら、
+      既存の karo.md / gunshi.md / cli_adapter.sh の拡張として
+      どのようなアーキテクチャが最も適切か設計せよ。
+      特に: (1) 各コンポーネントの責務分担 (2) フィードバックデータの永続化
+      (3) ループが悪化方向に学習しないためのガードレール設計を含めること。
+    expected_output_type: system_design
+    verifiable_condition: "design covers: component responsibilities, persistence strategy, guardrails against regression"
+    difficulty: expert
+    notes: "self-improving system設計。最も複雑なL6タスク。"

@@ -1,0 +1,21 @@
+# settings_pattern_a.yaml — Pattern A: All Claude
+# Used for E2E testing with mock CLIs
+language: ja
+shell: bash
+display_mode: silent
+
+cli:
+  default: claude
+  agents:
+    karo:
+      type: claude
+      model: sonnet
+    ashigaru1:
+      type: claude
+      model: sonnet
+    ashigaru2:
+      type: claude
+      model: sonnet
+  validation:
+    fallback: claude
+    strict: false

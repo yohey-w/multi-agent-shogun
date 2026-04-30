@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">multi-agent-shogun Android</string>
+    <string name="tab_shogun">将軍</string>
+    <string name="tab_agents">エージェント</string>
+    <string name="tab_dashboard">ダッシュボード</string>
+    <string name="send">送信</string>
+    <string name="voice_input">音声入力</string>
+    <string name="refresh">更新</string>
+    <string name="settings">設定</string>
+    <string name="ssh_host">SSHホスト</string>
+    <string name="ssh_port">SSHポート</string>
+    <string name="ssh_user">SSHユーザー</string>
+    <string name="ssh_key_path">SSH秘密鍵パス</string>
+    <string name="shogun_session">将軍セッション名</string>
+    <string name="agents_session">エージェントセッション名</string>
+    <string name="save">保存</string>
+    <string name="connection_error">接続エラー</string>
+    <string name="send_command">コマンド送信</string>
+    <string name="command_hint">コマンドを入力</string>
+</resources>

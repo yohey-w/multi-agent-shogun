@@ -1,0 +1,298 @@
+name: Multi-CLI Test Suite
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'  # feature/で始まる全ブランチ
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Unit Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install bats-core (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo npm install -g bats
+
+      - name: Install bats-core (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bats-core
+
+      - name: Install GNU tools (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bash coreutils
+          echo "$(brew --prefix)/bin" >> $GITHUB_PATH
+          echo "$(brew --prefix)/opt/coreutils/libexec/gnubin" >> $GITHUB_PATH
+
+      - name: Setup bats helpers
+        run: |
+          mkdir -p tests/test_helper
+          git clone --depth 1 https://github.com/bats-core/bats-support tests/test_helper/bats-support
+          git clone --depth 1 https://github.com/bats-core/bats-assert tests/test_helper/bats-assert
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-venv
+
+      - name: Setup Python venv with PyYAML
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet pyyaml
+
+      - name: Run root-level tests (except agent_selfwatch)
+        run: |
+          ROOT_TESTS=$(ls tests/*.bats 2>/dev/null | grep -v 'tests/agent_selfwatch.bats' || true)
+          if [ -n "$ROOT_TESTS" ]; then
+            bats $ROOT_TESTS --timing
+          else
+            echo "::warning::No root-level bats files found (excluding agent_selfwatch)"
+          fi
+
+      - name: Run agent self-watch unit tests
+        run: |
+          if [ ! -f tests/agent_selfwatch.bats ]; then
+            echo "::error::tests/agent_selfwatch.bats not found"
+            exit 1
+          fi
+          bats tests/agent_selfwatch.bats --timing || {
+            echo "::error::Agent self-watch tests failed"
+            exit 1
+          }
+
+      - name: Run unit tests
+        run: |
+          if [ ! -d tests/unit ]; then
+            echo "::warning::tests/unit directory not found. Skipping unit tests."
+            exit 0
+          fi
+          bats tests/unit/ --timing || {
+            echo "::error::Unit tests failed"
+            exit 1
+          }
+
+      - name: Verify zero unexpected SKIPs (SKIP=FAIL policy)
+        run: |
+          SKIP_COUNT=0
+          for f in tests/*.bats tests/unit/*.bats; do
+            [ -f "$f" ] || continue
+            RESULT=$(bats "$f" --tap 2>/dev/null || true)
+            # Count skips, excluding known CI-environment skips (e.g. "claude not installed")
+            COUNT=$(echo "$RESULT" | grep "^ok.*# skip" | grep -cv "CI environment" || true)
+            SKIP_COUNT=$((SKIP_COUNT + COUNT))
+          done
+          if [ "$SKIP_COUNT" -gt 0 ]; then
+            echo "::error::$SKIP_COUNT tests were SKIPPED unexpectedly. SKIP = FAIL policy (FR-054)."
+            exit 1
+          fi
+          echo "All tests executed (0 unexpected skips)"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ matrix.os }}
+          path: tests/unit/*.tap
+          if-no-files-found: ignore
+
+  build-check:
+    name: Build Instructions Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if build script exists
+        id: check_script
+        run: |
+          if [ -f scripts/build_instructions.sh ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run build_instructions.sh
+        if: steps.check_script.outputs.exists == 'true'
+        run: |
+          bash scripts/build_instructions.sh
+
+      - name: Check for uncommitted changes
+        if: steps.check_script.outputs.exists == 'true'
+        run: |
+          if [ ! -d instructions/generated ]; then
+            echo "::warning::instructions/generated directory not found. Skipping diff check."
+            exit 0
+          fi
+
+          git diff --exit-code instructions/generated/ || {
+            echo "::error::Generated instructions files are out of sync!"
+            echo "::error::Run 'bash scripts/build_instructions.sh' and commit the changes."
+            git diff instructions/generated/
+            exit 1
+          }
+
+          echo "✓ Generated instructions are in sync with source templates"
+
+      - name: Skip build check
+        if: steps.check_script.outputs.exists == 'false'
+        run: |
+          echo "::warning::scripts/build_instructions.sh not found. Skipping build check."
+          echo "This check will be enabled once template generation is implemented (Phase 2)"
+
+  shellcheck:
+    name: Shell Script Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on lib/
+        run: |
+          if [ -d lib ]; then
+            find lib -name '*.sh' -type f -exec shellcheck -x -S error {} +
+          else
+            echo "::warning::lib/ directory not found"
+          fi
+
+      - name: Run shellcheck on scripts/
+        run: |
+          if [ -d scripts ]; then
+            find scripts -name '*.sh' -type f -exec shellcheck -x -S error {} +
+          else
+            echo "::warning::scripts/ directory not found"
+          fi
+
+  e2e-tests:
+    name: E2E Tests (Mock CLI)
+    runs-on: ubuntu-latest
+    needs: [unit-tests, shellcheck]
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        pattern:
+          - name: "Pattern-A-All-Claude"
+            settings: "tests/e2e/fixtures/settings_pattern_a.yaml"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmux inotify-tools python3-venv
+
+      - name: Setup Python venv with PyYAML
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet pyyaml
+
+      - name: Install bats-core
+        run: sudo npm install -g bats
+
+      - name: Setup bats helpers
+        run: |
+          mkdir -p tests/test_helper
+          git clone --depth 1 https://github.com/bats-core/bats-support tests/test_helper/bats-support
+          git clone --depth 1 https://github.com/bats-core/bats-assert tests/test_helper/bats-assert
+
+      - name: Make mock CLI executable
+        run: chmod +x tests/e2e/mock_cli.sh tests/e2e/mock_behaviors/*.sh
+
+      - name: Run E2E tests with ${{ matrix.pattern.name }}
+        env:
+          E2E_SETTINGS: ${{ matrix.pattern.settings }}
+          MOCK_PROCESSING_DELAY: "1"
+          E2E_ESCALATE_PHASE1: "10"
+          E2E_ESCALATE_PHASE2: "20"
+          E2E_INOTIFY_TIMEOUT: "5"
+        run: |
+          bats tests/e2e/ --timing --jobs 1 || {
+            echo "::error::E2E tests failed for ${{ matrix.pattern.name }}"
+            # Dump tmux panes for debugging
+            for session in $(tmux list-sessions -F '#{session_name}' 2>/dev/null); do
+              echo "=== Session: $session ==="
+              for pane in $(tmux list-panes -t "$session" -F '#{pane_id}' 2>/dev/null); do
+                echo "--- Pane: $pane ---"
+                tmux capture-pane -t "$pane" -p 2>/dev/null || true
+              done
+            done
+            # Dump inbox_watcher logs
+            cat /tmp/e2e_inbox_watcher_*.log 2>/dev/null || true
+            exit 1
+          }
+
+      - name: Upload E2E test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.pattern.name }}
+          path: |
+            /tmp/e2e_inbox_watcher_*.log
+          if-no-files-found: ignore
+
+  integration-tests:
+    name: Integration Tests (Claude only)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install bats-core
+        run: |
+          sudo npm install -g bats
+
+      - name: Setup bats helpers
+        run: |
+          mkdir -p tests/test_helper
+          git clone --depth 1 https://github.com/bats-core/bats-support tests/test_helper/bats-support
+          git clone --depth 1 https://github.com/bats-core/bats-assert tests/test_helper/bats-assert
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-yaml tmux inotify-tools
+
+      - name: Run integration tests
+        run: |
+          if [ ! -d tests/integration ]; then
+            echo "::warning::tests/integration directory not found. Skipping integration tests."
+            exit 0
+          fi
+          bats tests/integration/ --filter-tags '!copilot,!codex' --timing || {
+            echo "::error::Integration tests failed"
+            exit 1
+          }
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: tests/integration/*.tap
+          if-no-files-found: ignore

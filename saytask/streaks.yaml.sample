@@ -1,0 +1,12 @@
+# SayTask ストリーク管理
+# 家老がcmd完了時に更新する
+# 使い方: このファイルを streaks.yaml にコピーして使用
+#   cp saytask/streaks.yaml.sample saytask/streaks.yaml
+streak:
+  current: 0
+  last_date: ""
+  longest: 0
+today:
+  frog: ""
+  completed: 0
+  total: 0

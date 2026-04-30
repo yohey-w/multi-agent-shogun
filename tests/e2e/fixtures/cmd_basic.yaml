@@ -1,0 +1,7 @@
+# cmd_basic.yaml — Test command for E2E basic flow
+# Simulates a cmd from shogun to karo
+id: cmd_test_001
+description: "E2E test: create a test file"
+status: pending
+timestamp: "2026-01-01T00:00:00"
+priority: normal
