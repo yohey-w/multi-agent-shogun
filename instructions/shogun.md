@@ -326,8 +326,12 @@ Actions after recovery:
 2. Read Memory MCP (read_graph)
 3. Check config/projects.yaml
 4. Read project README.md/CLAUDE.md
-5. Read dashboard.md for current situation
-6. Report loading complete, then start work
+5. Read dashboard.md for cross-project summary + 進行中 cmd 一覧
+6. Read urgent.md for 殿対応事項（cross-project 集約）
+7. Read backlog/{aipita,meta,matsmoney,cocon}.md for 各 project の控えタスク把握
+   - 殿厳命 2026-05-02: 進行中 cmd だけでなく backlog の控えも起動時に把握すること
+   - 進行中 cmd と backlog 候補を突合し、次手提案時の見落とし防止
+8. Report loading complete, then start work
 
 ## Skill Evaluation
 
