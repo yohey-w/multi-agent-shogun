@@ -444,7 +444,7 @@ PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
 # -----------------------------------------------------------------------------
 log_info "Creating multi-agent session (planner + ${_ENGINEER_COUNT} engineers + tester + reviewer)..."
 
-if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
+if ! tmux new-session -d -s multiagent -n "agents" -x 240 -y 60 2>/dev/null; then
     echo ""
     echo "  [error] failed to create tmux session 'multiagent'"
     echo "    Check: tmux ls"
@@ -452,6 +452,10 @@ if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
     echo ""
     exit 1
 fi
+
+# Force fixed window size so splits don't fail on small terminals
+# (without this, detached sessions use 80x24 and splits collapse to 1-row panes)
+tmux set-option -t multiagent window-size manual 2>/dev/null || true
 
 # DISPLAY_MODE: shout (default) or silent (--silent)
 if [ "$SILENT_MODE" = true ]; then
@@ -461,25 +465,29 @@ else
     tmux set-environment -t multiagent DISPLAY_MODE "shout"
 fi
 
-# 5x2 grid (10 panes)
-# Create 5 columns by splitting horizontally 4 times
-tmux split-window -h -t "multiagent:agents"
-tmux split-window -h -t "multiagent:agents"
-tmux split-window -h -t "multiagent:agents"
-tmux split-window -h -t "multiagent:agents"
+# 5x2 grid (10 panes) — deterministic split sequence
+# Strategy: create 5 horizontal columns first (even-horizontal), then split each vertically.
+# Working from rightmost column inwards keeps pane indices stable for the vertical splits.
 
-# Split each column vertically (top/bottom row)
-for col in 0 1 2 3 4; do
-    tmux select-pane -t "multiagent:agents.$((PANE_BASE + col * 2))" 2>/dev/null || \
-    tmux select-pane -t "multiagent:agents.$((PANE_BASE + col))"
+# Step 1: create 5 columns by splitting pane 0 horizontally 4 times.
+# After each split tmux makes the new (right) pane active, so always splitting pane 0
+# yields a deterministic [pane0 | pane4 | pane3 | pane2 | pane1] layout.
+for _ in 1 2 3 4; do
+    tmux split-window -h -t "multiagent:agents.${PANE_BASE}"
 done
-# Use tiled layout first to get predictable pane indices, then do vertical splits
-tmux select-layout -t "multiagent:agents" tiled
-# After tiled, split each of the 5 existing panes vertically
-# tiled with 5 panes gives us 5 panes in a row; split each
-for col in $(seq 0 4); do
-    tmux select-pane -t "multiagent:agents.$((PANE_BASE + col))"
-    tmux split-window -v -t "multiagent:agents"
+tmux select-layout -t "multiagent:agents" even-horizontal
+
+# Step 2: split each column vertically — RIGHT-TO-LEFT (col 4 first, col 0 last).
+# Why reverse: tmux inserts new panes at `target+1` and renumbers higher-index panes.
+# Splitting from the right keeps lower-index panes stable; the new pane gets the
+# next free index. Final mapping (deterministic):
+#   pane 0 = col0 top, pane 1 = col0 bot
+#   pane 2 = col1 top, pane 3 = col1 bot
+#   pane 4 = col2 top, pane 5 = col2 bot
+#   pane 6 = col3 top, pane 7 = col3 bot
+#   pane 8 = col4 top, pane 9 = col4 bot
+for col in 4 3 2 1 0; do
+    tmux split-window -v -t "multiagent:agents.$((PANE_BASE + col))"
 done
 tmux select-layout -t "multiagent:agents" tiled
 
