@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # agent-orchestra v2 — start_session.sh
-# Boots the multi-pane tmux orchestration: orchestrator + planner + reviewer + engineer1..7.
+# Boots the multi-pane tmux orchestration: orchestrator + planner + tester + reviewer + engineer1..7.
 #
 # Usage:
 #   ./start_session.sh                 # start all panes (preserve previous queue/dashboard state)
@@ -154,12 +154,18 @@ Options:
 Roles & default models:
   orchestrator  Opus                # top-level dispatcher
   planner       Sonnet              # spec author / dispatcher
+  tester        Sonnet              # blind QA (spec AC-based test execution)
   reviewer      Opus                # design + code review
   engineer1..7  Sonnet (Opus in --all-opus)
 
 Sessions:
   orchestrator    1 pane  (orchestrator)
-  multiagent 9 panes (planner + engineer1..7 + reviewer in a 3x3 grid)
+  multiagent 10 panes (planner + engineer1..7 + tester + reviewer in a 5x2 grid)
+
+  5x2 pane layout:
+     col0       col1        col2        col3       col4
+     planner    engineer2   engineer4   engineer6  tester
+     engineer1  engineer3   engineer5   engineer7  reviewer
 
 Aliases (suggested):
   csst -> cd <repo> && ./start_session.sh
@@ -194,7 +200,7 @@ echo ""
 echo -e "\033[1;36m=================================================================\033[0m"
 echo -e "\033[1;37m  agent-orchestra v2 - starting session\033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
-echo "  orchestrator + planner + reviewer + engineer1..${_ENGINEER_COUNT}"
+echo "  orchestrator + planner + tester + reviewer + engineer1..${_ENGINEER_COUNT}"
 echo ""
 
 # -----------------------------------------------------------------------------
@@ -277,6 +283,17 @@ task:
   timestamp: ""
 EOF
 
+    cat > ./queue/tasks/tester.yaml << EOF
+# tester task slot
+task:
+  task_id: null
+  parent_cmd: null
+  description: null
+  target_path: null
+  status: idle
+  timestamp: ""
+EOF
+
     for i in $(seq 1 "$_ENGINEER_COUNT"); do
         cat > ./queue/reports/engineer${i}_report.yaml << EOF
 worker_id: engineer${i}
@@ -295,9 +312,17 @@ status: idle
 result: null
 EOF
 
+    cat > ./queue/reports/tester_report.yaml << EOF
+worker_id: tester
+task_id: null
+timestamp: ""
+status: idle
+result: null
+EOF
+
     echo "inbox:" > ./queue/ntfy_inbox.yaml
 
-    for role in orchestrator planner reviewer $_ENGINEER_IDS_STR; do
+    for role in orchestrator planner tester reviewer $_ENGINEER_IDS_STR; do
         echo "messages: []" > "./queue/inbox/${role}.yaml"
         echo "messages: []" > "./queue/outbox/${role}.yaml"
     done
@@ -411,9 +436,13 @@ echo ""
 PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
 
 # -----------------------------------------------------------------------------
-# STEP 5.1: Create multiagent session - 9 panes (planner + engineer1..7 + reviewer)
+# STEP 5.1: Create multiagent session - 10 panes (planner + engineer1..7 + tester + reviewer)
+# 5x2 grid layout:
+#   col0       col1        col2        col3       col4
+#   planner    engineer2   engineer4   engineer6  tester
+#   engineer1  engineer3   engineer5   engineer7  reviewer
 # -----------------------------------------------------------------------------
-log_info "Creating multi-agent session (planner + ${_ENGINEER_COUNT} engineers + reviewer)..."
+log_info "Creating multi-agent session (planner + ${_ENGINEER_COUNT} engineers + tester + reviewer)..."
 
 if ! tmux new-session -d -s multiagent -n "agents" 2>/dev/null; then
     echo ""
@@ -432,23 +461,32 @@ else
     tmux set-environment -t multiagent DISPLAY_MODE "shout"
 fi
 
-# 3x3 grid (9 panes)
+# 5x2 grid (10 panes)
+# Create 5 columns by splitting horizontally 4 times
+tmux split-window -h -t "multiagent:agents"
+tmux split-window -h -t "multiagent:agents"
 tmux split-window -h -t "multiagent:agents"
 tmux split-window -h -t "multiagent:agents"
 
-tmux select-pane -t "multiagent:agents.${PANE_BASE}"
-tmux split-window -v
-tmux split-window -v
-
-tmux select-pane -t "multiagent:agents.$((PANE_BASE+3))"
-tmux split-window -v
-tmux split-window -v
-
-tmux select-pane -t "multiagent:agents.$((PANE_BASE+6))"
-tmux split-window -v
-tmux split-window -v
+# Split each column vertically (top/bottom row)
+for col in 0 1 2 3 4; do
+    tmux select-pane -t "multiagent:agents.$((PANE_BASE + col * 2))" 2>/dev/null || \
+    tmux select-pane -t "multiagent:agents.$((PANE_BASE + col))"
+done
+# Use tiled layout first to get predictable pane indices, then do vertical splits
+tmux select-layout -t "multiagent:agents" tiled
+# After tiled, split each of the 5 existing panes vertically
+# tiled with 5 panes gives us 5 panes in a row; split each
+for col in $(seq 0 4); do
+    tmux select-pane -t "multiagent:agents.$((PANE_BASE + col))"
+    tmux split-window -v -t "multiagent:agents"
+done
+tmux select-layout -t "multiagent:agents" tiled
 
 # Pane labels / agent ids / colours - built dynamically
+# Layout order: col0-top=planner, col0-bot=engineer1, col1-top=engineer2, col1-bot=engineer3,
+#               col2-top=engineer4, col2-bot=engineer5, col3-top=engineer6, col3-bot=engineer7,
+#               col4-top=tester, col4-bot=reviewer
 PANE_LABELS=("planner")
 AGENT_IDS=("planner")
 PANE_COLORS=("red")
@@ -457,6 +495,9 @@ for _ai in $_ENGINEER_IDS_STR; do
     AGENT_IDS+=("$_ai")
     PANE_COLORS+=("blue")
 done
+PANE_LABELS+=("tester")
+AGENT_IDS+=("tester")
+PANE_COLORS+=("cyan")
 PANE_LABELS+=("reviewer")
 AGENT_IDS+=("reviewer")
 PANE_COLORS+=("yellow")
@@ -467,6 +508,8 @@ for _ai in "${AGENT_IDS[@]}"; do
     if [[ "$_ai" == "reviewer" ]]; then
         MODEL_NAMES+=("Opus")
     elif [[ "$_ai" == "planner" ]]; then
+        MODEL_NAMES+=("Sonnet")
+    elif [[ "$_ai" == "tester" ]]; then
         MODEL_NAMES+=("Sonnet")
     elif [ "$ALL_OPUS_MODE" = true ]; then
         MODEL_NAMES+=("Opus")
@@ -596,8 +639,16 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
         log_info "  engineer1..${_ENGINEER_COUNT} launched (Sonnet)"
     fi
 
-    # reviewer (last pane)
-    REVIEWER_PANE=$((PANE_BASE + _ENGINEER_COUNT + 1))
+    # tester (second-to-last pane, index = planner(0) + engineers(1..N) + tester(N+1))
+    TESTER_PANE=$((PANE_BASE + _ENGINEER_COUNT + 1))
+    IFS='|' read -r _ts_cli _ts_cmd <<< "$(_build_cmd tester sonnet)"
+    tmux set-option -p -t "multiagent:agents.${TESTER_PANE}" @agent_cli "$_ts_cli"
+    tmux send-keys -t "multiagent:agents.${TESTER_PANE}" "$_ts_cmd"
+    tmux send-keys -t "multiagent:agents.${TESTER_PANE}" Enter
+    log_info "  tester launched ($_ts_cli)"
+
+    # reviewer (last pane, index = planner(0) + engineers(1..N) + tester(N+1) + reviewer(N+2))
+    REVIEWER_PANE=$((PANE_BASE + _ENGINEER_COUNT + 2))
     IFS='|' read -r _rv_cli _rv_cmd <<< "$(_build_cmd reviewer opus)"
     tmux set-option -p -t "multiagent:agents.${REVIEWER_PANE}" @agent_cli "$_rv_cli"
     tmux send-keys -t "multiagent:agents.${REVIEWER_PANE}" "$_rv_cmd"
@@ -607,7 +658,7 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
     if [ "$ALL_OPUS_MODE" = true ]; then
         log_success "Session up: all-Opus mode (orchestrator + reviewer + every engineer = Opus)"
     else
-        log_success "Session up: planner=Sonnet, engineer*=Sonnet, orchestrator=reviewer=Opus"
+        log_success "Session up: planner=Sonnet, tester=Sonnet, engineer*=Sonnet, orchestrator=reviewer=Opus"
     fi
     echo ""
 
@@ -632,7 +683,7 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
     log_info "Starting inbox watchers..."
 
     mkdir -p "$SCRIPT_DIR/logs"
-    for role in orchestrator planner reviewer $_ENGINEER_IDS_STR; do
+    for role in orchestrator planner tester reviewer $_ENGINEER_IDS_STR; do
         [ -f "$SCRIPT_DIR/queue/inbox/${role}.yaml" ] || echo "messages: []" > "$SCRIPT_DIR/queue/inbox/${role}.yaml"
     done
 
@@ -663,13 +714,19 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
         disown
     done
 
+    # tester
+    _ts_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${TESTER_PANE}" -v @agent_cli 2>/dev/null || echo "claude")
+    nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "tester" "multiagent:agents.${TESTER_PANE}" "$_ts_watcher_cli" \
+        >> "$SCRIPT_DIR/logs/inbox_watcher_tester.log" 2>&1 &
+    disown
+
     # reviewer
     _rv_watcher_cli=$(tmux show-options -p -t "multiagent:agents.${REVIEWER_PANE}" -v @agent_cli 2>/dev/null || echo "claude")
     nohup bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" "reviewer" "multiagent:agents.${REVIEWER_PANE}" "$_rv_watcher_cli" \
         >> "$SCRIPT_DIR/logs/inbox_watcher_reviewer.log" 2>&1 &
     disown
 
-    log_success "  $((_ENGINEER_COUNT + 3)) inbox watchers running (orchestrator + planner + engineer*${_ENGINEER_COUNT} + reviewer)"
+    log_success "  $((_ENGINEER_COUNT + 4)) inbox watchers running (orchestrator + planner + engineer*${_ENGINEER_COUNT} + tester + reviewer)"
     echo ""
 fi
 
@@ -755,10 +812,9 @@ echo ""
 echo "  Pane layout:"
 echo ""
 echo "      [orchestrator]  orchestrator"
-echo "      [multiagent]    3x3 grid:"
-echo "                       planner    engineer3   engineer6"
-echo "                       engineer1  engineer4   engineer7"
-echo "                       engineer2  engineer5   reviewer"
+echo "      [multiagent]    5x2 grid:"
+echo "                       planner    engineer2   engineer4   engineer6  tester"
+echo "                       engineer1  engineer3   engineer5   engineer7  reviewer"
 echo ""
 
 if [ "$SETUP_ONLY" = true ]; then
@@ -766,7 +822,7 @@ if [ "$SETUP_ONLY" = true ]; then
     echo ""
     echo "  Manual launch:"
     echo "      tmux send-keys -t orchestrator:main 'claude --dangerously-skip-permissions' Enter"
-    echo "      for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do"
+    echo "      for p in \$(seq $PANE_BASE $((PANE_BASE+9))); do"
     echo "          tmux send-keys -t multiagent:agents.\$p 'claude --dangerously-skip-permissions' Enter"
     echo "      done"
     echo ""

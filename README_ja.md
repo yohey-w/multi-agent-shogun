@@ -9,7 +9,18 @@ tmux session 1 つに role 別 pane を立ち上げる:
 - **orchestrator** — 殿の要件を受け取り planner に dispatch、最終結果を返す
 - **planner** — 要件を Haiku 粒度の仕様書 (`specs/`) に分解し、各 task を担当 engineer に割当
 - **engineer1..7** — 実装 pane。subagent dispatch で frontend / backend / db / ... の専門に化ける
-- **reviewer** — merge 前の design + code レビュー
+- **tester** — blind QA pane: spec の AC だけ Read (impl context 排除)、test 実行、PASS/FAIL を報告
+- **reviewer** — コード品質 + design レビュー pane: diff + 実装を Read、指摘を報告
+
+4-stage 開発ライフサイクル:
+
+```
+planner spec 作成 → engineer 実装 → (tester ∥ reviewer 並列)
+  tester:   spec AC のみ → blind test 実行 → PASS/FAIL
+  reviewer: diff + 設計 → コード品質指摘
+両 ✅ → planner spec 完了マーク + memory 更新
+いずれか ✗ → planner が engineer に redispatch (失敗根拠付き)
+```
 
 各 pane は独立した Claude Code session で、それぞれ別のコンテキストウィンドウを持つ。連携は `queue/inbox/<role>.yaml` + `queue/outbox/<role>.yaml` (file ベース message bus、`scripts/inbox_watcher.sh` が監視)。役割別 memory は `memory/<role>.md` に置き、SessionStart hook で起動時に自動 inject される。
 
@@ -51,7 +62,13 @@ cd agent-orchestra
 ./start_session.sh -h        # 完全な help
 ```
 
-`orchestrator` (1 pane) と `multiagent` (9 pane: planner + engineer1..7 + reviewer) の 2 つの tmux session が起動する。
+`orchestrator` (1 pane) と `multiagent` (10 pane、5x2 grid: planner + engineer1..7 + tester + reviewer) の 2 つの tmux session が起動する。
+
+```
+   col0       col1        col2        col3       col4
+   planner    engineer2   engineer4   engineer6  tester
+   engineer1  engineer3   engineer5   engineer7  reviewer
+```
 
 ### 3. orchestrator に attach
 

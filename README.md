@@ -6,10 +6,21 @@ Multi-agent development orchestration for Claude Code, running multiple speciali
 
 The runtime is a tmux session with one pane per role:
 
-- **orchestrator** — receives requirements from the user (lord), dispatches to planner, returns final result
+- **orchestrator** — receives requirements from the user, dispatches to planner, returns final result
 - **planner** — decomposes work into Haiku-grade specs (`specs/`), assigns each task to the right engineer
 - **engineer1..7** — implementation panes; each can be a different specialist (frontend/backend/db/...) via subagent dispatch
-- **reviewer** — design + code review before merge
+- **tester** — blind QA pane: reads only the spec's acceptance criteria (no impl context), runs tests, reports PASS/FAIL
+- **reviewer** — code quality + design review pane: reads diff + implementation, reports findings
+
+The 4-stage software lifecycle:
+
+```
+planner writes spec → engineer implements → (tester ∥ reviewer in parallel)
+   tester:   spec AC only → blind test execution → PASS/FAIL
+   reviewer: diff + design → code quality findings
+both ✅ → planner marks spec complete + updates memory
+either ✗ → planner re-dispatches engineer with failure details
+```
 
 Each pane is an independent Claude Code session with its own context window. Coordination happens through `queue/inbox/<role>.yaml` + `queue/outbox/<role>.yaml` (file-based message bus, watched by `scripts/inbox_watcher.sh`). Per-role memory in `memory/<role>.md` is auto-injected at session start via SessionStart hook.
 
@@ -51,7 +62,13 @@ Skim `CLAUDE.md` (project instructions, auto-loaded by Claude) and `.claude/sett
 ./start_session.sh -h        # full help
 ```
 
-This boots a tmux session named `orchestrator` (1 pane) plus a `multiagent` session (9 panes) for planner + engineer1..7 + reviewer.
+This boots a tmux session named `orchestrator` (1 pane) plus a `multiagent` session (10 panes, 5x2 grid) for planner + engineer1..7 + tester + reviewer.
+
+```
+   col0       col1        col2        col3       col4
+   planner    engineer2   engineer4   engineer6  tester
+   engineer1  engineer3   engineer5   engineer7  reviewer
+```
 
 ### 3. Attach to the orchestrator
 

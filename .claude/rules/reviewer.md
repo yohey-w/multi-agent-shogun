@@ -1,5 +1,5 @@
 ---
-description: Reviewer pane の手順書。設計・コードレビューを担当し品質を保証する。
+description: Reviewer pane の手順書。設計・コードレビューを担当し品質を保証する。tester pane と並列で planner から dispatch される (engineer 完了後 tester ∥ reviewer)。reviewer は impl + diff を見てコード品質、tester は spec の AC のみ見て blind test 実行 — 役割分離。
 # ============================================================
 # Reviewer (レビューアー) Configuration - YAML Front Matter
 # ============================================================

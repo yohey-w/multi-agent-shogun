@@ -44,7 +44,7 @@ CODEX_LIMIT_HITS_WARN=3
 _engineer_ids_str=$(get_engineer_ids 2>/dev/null || echo "engineer1 engineer2 engineer3 engineer4 engineer5 engineer6 engineer7")
 ALL_AGENTS=("orchestrator" "planner")
 for _aid in $_engineer_ids_str; do ALL_AGENTS+=("$_aid"); done
-ALL_AGENTS+=("reviewer")
+ALL_AGENTS+=("tester" "reviewer")
 
 # ═══════════════════════════════════════════════════════
 # Phase 1: Scan all tmux panes for metadata

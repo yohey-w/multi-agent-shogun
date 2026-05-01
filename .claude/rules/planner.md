@@ -111,18 +111,36 @@ workflow:
   - step: 8
     action: check_pending
     note: "If pending cmds remain in orchestrator_to_planner.yaml → loop to step 2. Otherwise stop."
-  # NOTE: No background monitor needed. Reviewer sends inbox_write on QC completion.
-  # Engineer → Reviewer (quality check) → Planner (notification). Fully event-driven.
+  # NOTE: No background monitor needed. Tester and Reviewer send inbox_write on completion.
+  # Engineer → (Tester ∥ Reviewer) parallel dispatch → Planner (notification). Fully event-driven.
+  # 4-stage workflow: engineer completes → planner dispatches tester + reviewer in parallel
+  #                   both PASS → planner marks spec complete
+  #                   either FAIL → planner redispatches engineer with failure details
+  - step: 8.5
+    action: parallel_qa_dispatch
+    note: |
+      After engineer completes (step 8 inbox wakeup), dispatch BOTH tester and reviewer in parallel:
+      1. Write queue/tasks/tester.yaml (spec_path, acceptance_criteria_ids, deliverable_paths)
+      2. Write queue/tasks/reviewer.yaml (type: quality_check, engineer_report_id, context_task_id)
+      3. inbox_write to tester: "タスクYAMLを読んでblind QAを開始せよ。"
+      4. inbox_write to reviewer: "タスクYAMLを読んでコード品質レビューを開始せよ。"
+      Both tester and reviewer run independently. Planner waits for BOTH results.
+      On tester FAIL: redispatch engineer with test failure details (AC-N failed, evidence).
+      On reviewer FAIL: redispatch engineer with code quality issues.
+      On both PASS: mark spec complete, update dashboard, notify orchestrator.
   # === Report Reception Phase ===
   - step: 9
     action: receive_wakeup
-    from: reviewer
+    from: tester_or_reviewer
     via: inbox
-    note: "Reviewer reports QC results. Engineer no longer reports directly to Planner."
+    note: |
+      Tester reports blind QA results. Reviewer reports code quality results.
+      Either may arrive first. Wait for BOTH before marking complete.
+      Track: tester_done (bool), reviewer_done (bool).
   - step: 10
     action: scan_all_reports
-    target: "queue/reports/engineer*_report.yaml + queue/reports/reviewer_report.yaml"
-    note: "Scan ALL reports (engineer + reviewer). Communication loss safety net."
+    target: "queue/reports/engineer*_report.yaml + queue/reports/tester_report.yaml + queue/reports/reviewer_report.yaml"
+    note: "Scan ALL reports (engineer + tester + reviewer). Communication loss safety net."
   - step: 11
     action: update_dashboard
     target: dashboard.md
@@ -153,8 +171,10 @@ workflow:
 files:
   input: queue/orchestrator_to_planner.yaml
   task_template: "queue/tasks/engineer{N}.yaml"
+  tester_task: queue/tasks/tester.yaml
   reviewer_task: queue/tasks/reviewer.yaml
   report_pattern: "queue/reports/engineer{N}_report.yaml"
+  tester_report: queue/reports/tester_report.yaml
   reviewer_report: queue/reports/reviewer_report.yaml
   dashboard: dashboard.md
 
@@ -168,7 +188,8 @@ panes:
     - { id: 5, pane: "multiagent:0.5" }
     - { id: 6, pane: "multiagent:0.6" }
     - { id: 7, pane: "multiagent:0.7" }
-  reviewer: { pane: "multiagent:0.8" }
+  tester:  { pane: "multiagent:0.8" }   # blind QA — spec AC-based test execution
+  reviewer: { pane: "multiagent:0.9" }  # code quality review (moved from 0.8)
   agent_id_lookup: "tmux list-panes -t multiagent -F '#{pane_index}' -f '#{==:#{@agent_id},engineer{N}}'"
 
 inbox:
@@ -589,7 +610,7 @@ If `config/settings.yaml` has no `ntfy_topic` → skip all notifications silentl
 
 > See CLAUDE.md for the escalation rule (🚨 要対応 section).
 
-Planner and Reviewer update dashboard.md. Reviewer updates during quality check aggregation (QC results section). Planner updates for task status, streaks, and action-needed items. Neither orchestrator nor engineer touch it.
+Planner and Reviewer update dashboard.md. Reviewer updates during code quality check (QC results section). Tester reports go via planner (tester does not write dashboard directly). Planner updates for task status, streaks, and action-needed items. Neither orchestrator, engineer, nor tester touch dashboard directly.
 
 | Timing | Section | Content |
 |--------|---------|---------|
@@ -695,7 +716,7 @@ Orchestrator needs conversation history with the lord.
 Planner MAY self-/clear when ALL of the following conditions are met:
 
 1. **No in_progress cmds**: All cmds in `orchestrator_to_planner.yaml` are `done` or `pending` (zero `in_progress`)
-2. **No active tasks**: No `queue/tasks/engineer*.yaml` or `queue/tasks/reviewer.yaml` with `status: assigned` or `status: in_progress`
+2. **No active tasks**: No `queue/tasks/engineer*.yaml`, `queue/tasks/tester.yaml`, or `queue/tasks/reviewer.yaml` with `status: assigned` or `status: in_progress`
 3. **No unread inbox**: `queue/inbox/planner.yaml` has zero `read: false` entries
 
 When conditions met → execute self-/clear:
@@ -805,7 +826,7 @@ STEP 2: Write task YAML to queue/tasks/reviewer.yaml
   - type: strategy | analysis | design | evaluation | decomposition
   - Include all context_files the Reviewer will need
 STEP 3: Set pane task label
-  tmux set-option -p -t multiagent:0.8 @current_task "戦略立案"
+  tmux set-option -p -t multiagent:0.9 @current_task "戦略立案"
 STEP 4: Send inbox
   bash scripts/inbox_write.sh reviewer "タスクYAMLを読んで分析開始せよ。" task_assigned planner
 STEP 5: Continue dispatching other engineer tasks in parallel
@@ -818,7 +839,7 @@ When Reviewer completes:
 1. Read `queue/reports/reviewer_report.yaml`
 2. Use Reviewer's analysis to create/refine engineer task YAMLs
 3. Update dashboard.md with Reviewer's findings (if significant)
-4. Reset pane label: `tmux set-option -p -t multiagent:0.8 @current_task ""`
+4. Reset pane label: `tmux set-option -p -t multiagent:0.9 @current_task ""`
 
 ### Reviewer Limitations
 

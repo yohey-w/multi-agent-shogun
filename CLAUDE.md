@@ -11,9 +11,10 @@
 | Role           | tmux session : pane         | 役割                                                     | デフォルト model |
 |----------------|------------------------------|----------------------------------------------------------|-------------------|
 | orchestrator   | `orchestrator:main`                | 殿の要件を受領し planner に dispatch、最終報告を殿に返す | Opus              |
-| planner        | `multiagent:agents.0`        | spec 化 + engineer/reviewer に dispatch、コードは書かない | Sonnet            |
+| planner        | `multiagent:agents.0`        | spec 化 + engineer/tester/reviewer に dispatch、コードは書かない | Sonnet            |
 | engineer1..7   | `multiagent:agents.1..7`     | spec を実装する作業 pane (並列実行可)                    | Sonnet            |
-| reviewer       | `multiagent:agents.8`        | 設計レビュー + コードレビュー (実装前 / merge 前)        | Opus              |
+| tester         | `multiagent:agents.8`        | 実装コンテキスト無しで spec の AC のみ見て test 実行 (blind QA) | Sonnet            |
+| reviewer       | `multiagent:agents.9`        | 設計レビュー + コードレビュー (impl + diff、コード品質)    | Opus              |
 
 (`orchestrator` (1 pane) と `multiagent` (9 pane) の 2 つの tmux session で動作する。)
 
@@ -73,9 +74,11 @@ planner: engineer の inbox に dispatch (queue/inbox/engineerN.yaml、並列可
 engineer: SessionStart hook で memory/<role>.md を auto-load
         + spec ファイルを Read + .claude/rules/engineer.md を参照
 engineer: 実装 → planner の inbox に完了 report
-planner: reviewer の inbox に dispatch (設計→コード)
-reviewer: design + code review → planner に report
+planner: tester + reviewer の inbox に**並列** dispatch
+  tester:   spec の AC のみ Read (impl context 排除) → blind test 実行 → PASS/FAIL を planner に
+  reviewer: 実装 diff + design レビュー → 指摘 0 or N を planner に
 両 ✅ → planner が orchestrator に最終 report
+いずれか ✗ → planner が engineer に redispatch (失敗根拠付き)
 orchestrator: 殿に最終報告 + memory/<role>.md に学び追記
 ```
 
@@ -92,10 +95,11 @@ orchestrator: 殿に最終報告 + memory/<role>.md に学び追記
 │       ├── orchestrator.md
 │       ├── planner.md
 │       ├── reviewer.md
+│       ├── tester.md
 │       ├── engineer.md
 │       ├── common/             # forbidden_actions, protocol, task_flow
 │       ├── cli_specific/       # claude / codex / copilot / kimi
-│       └── roles/              # role 別詳細
+│       └── roles/              # role 別詳細 (orchestrator / planner / engineer / tester / reviewer)
 ├── specs/                      # planner が作成する仕様書群
 │   └── YYYY-MM-DD-<topic>/
 ├── memory/                     # role 別 persistent context
@@ -216,6 +220,7 @@ Haiku grade = ファイル特定済 + 入出力明確 + 5-15 分実行可。
 
 - `.claude/rules/orchestrator.md` — orchestrator pane の手順書
 - `.claude/rules/planner.md` — planner pane の手順書
+- `.claude/rules/tester.md` — tester pane の手順書 (impl blind QA)
 - `.claude/rules/reviewer.md` — reviewer pane の手順書
 - `.claude/rules/engineer.md` — engineer pane の手順書 (engineer1..7 共通)
 - `.claude/rules/roles/<role>_role.md` — role 別の詳細 (CLI 個別の振る舞い等)

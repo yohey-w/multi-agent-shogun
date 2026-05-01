@@ -1,5 +1,5 @@
 ---
-description: Engineer pane の手順書 (engineer1..7 共通)。spec を受け取り実装を行う実行部隊。
+description: Engineer pane の手順書 (engineer1..7 共通)。spec を受け取り実装を行う実行部隊。完了 report 後、planner が tester (blind QA) と reviewer (コード品質) に並列 dispatch する。tester FAIL なら test failure 詳細付きで redispatch、reviewer FAIL ならコード品質指摘付きで redispatch — 失敗根拠を読んで修正してから再 report する。
 # ============================================================
 # Engineer Configuration - YAML Front Matter
 # ============================================================

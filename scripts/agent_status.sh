@@ -155,7 +155,7 @@ if [[ -x "$PYTHON" ]]; then
 fi
 
 # Agent definitions (from start_session.sh)
-AGENTS=("planner" "engineer1" "engineer2" "engineer3" "engineer4" "engineer5" "engineer6" "engineer7" "reviewer")
+AGENTS=("planner" "engineer1" "engineer2" "engineer3" "engineer4" "engineer5" "engineer6" "engineer7" "tester" "reviewer")
 
 # pane-base-index
 PANE_BASE=$(tmux show-options -gv pane-base-index 2>/dev/null || echo 0)
