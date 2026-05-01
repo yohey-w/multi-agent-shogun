@@ -4,7 +4,7 @@
 
 このリポジトリは、Claude Code 上で複数の専門 role を **tmux multi-pane** で並列稼働させる開発オーケストレーション基盤である (v2)。
 
-各 pane は独立した Claude (CLI) セッションで、`instructions/<role>.md` を SessionStart hook 経由で自動 load する。pane 間の連携は `queue/inbox/`, `queue/outbox/` の YAML ファイルと `scripts/inbox_watcher.sh` 経由で行う (Phase 8 で subagent dispatch only 構成は不適合と判明し、tmux 構成に復帰)。
+各 pane は独立した Claude (CLI) セッションで、`.claude/rules/<role>.md` を SessionStart hook 経由で自動 load する。pane 間の連携は `queue/inbox/`, `queue/outbox/` の YAML ファイルと `scripts/inbox_watcher.sh` 経由で行う (Phase 8 で subagent dispatch only 構成は不適合と判明し、tmux 構成に復帰)。
 
 ### Roles
 
@@ -21,13 +21,45 @@
 
 ### Subagents (`.claude/agents/`)
 
-- `planner` — pane 内 dispatch 用 (短時間タスク)
+公式仕様により **subagent → subagent dispatch は不可** (`memory/claude-code-expert.md §2 §10.1`)。dispatch は必ず main session (殿の CLI) から行う。subagent の `tools:` には `Agent` を含めない。
+
+Project-level (`.claude/agents/`):
+- `planner` — 要件分解 + spec 作成 + dispatch 指示書を main session に返す (実装はしない)
 - `design-reviewer` — 仕様 / アーキテクチャ / セキュリティ方針レビュー
 - `code-reviewer` — コード差分レビュー (merge 前、security 細部含む)
+- `claude-code-expert` — Anthropic Claude Code 公式仕様マスター (settings / hooks / subagents / skills / MCP / Agent Teams を熟知、`memory/claude-code-expert.md` をナレッジベースとする)
 
 User-level (`~/.claude/agents/`):
 - `frontend-engineer` / `backend-engineer` / `infrastructure-engineer` / `db-engineer` /
   `chrome-extension-engineer` / `native-app-engineer` / `game-engineer` / `ml-engineer` / `qa-engineer`
+
+各 subagent は frontmatter に `memory: project` を持ち、SessionStart hook 経由で `memory/<agent>.md` が自動 inject される (公式機構)。
+
+### Skills (`.claude/skills/`)
+
+殿の頻用 op を slash command 化。`/<skill-name>` で起動可。
+
+| skill | 用途 |
+|-------|------|
+| `/dispatch-engineer <task-id>` | spec を engineer subagent に dispatch |
+| `/spec-haiku <topic>` | 要件 → Haiku 粒度 spec 群を生成 |
+| `/review-pr` | design-reviewer + code-reviewer を chain (worktree 隔離) |
+| `/archive-spec <topic>` | 完了 spec を archive 移動 |
+| `/init-project <name>` | `projects/<name>/` 雛形を作成 |
+| `/dashboard` | dashboard.md を再生成 |
+| `/memory-curate <agent>` | memory file を 200 行以内に整理 |
+| `update-memory` | hook 専用 (`disable-model-invocation: true`)、SubagentStop で自動 |
+| `/archive-queue` | queue/ の done エントリを月別 archive |
+
+### Hooks (`.claude/hooks/`)
+
+| event | hook | 動作 |
+|-------|------|------|
+| SessionStart | `session_start_inject_memory.sh` | `memory/MEMORY.md` + `memory/<agent>.md` を context 注入 |
+| PreToolUse (Bash) | `guard_rm.sh` | `rm -rf /` 等 D001-D002 危険コマンドを block |
+| PreToolUse (Edit\|Write) | `guard_outside_project.sh` | project 外への書込を block |
+| SubagentStop | `post_engineer.sh` | memory 200 行超なら curate 催促、subagent 完了ログ |
+| UserPromptSubmit | `inject_dashboard.sh` | dashboard.md + queue 未読件数を context 注入 |
 
 ## 2. 標準ワークフロー
 
@@ -39,7 +71,7 @@ planner: specs/<topic>/ に Haiku grade 仕様書群を作成
 planner: 各 spec の `agent:` フィールドで担当 engineer 割当
 planner: engineer の inbox に dispatch (queue/inbox/engineerN.yaml、並列可)
 engineer: SessionStart hook で memory/<role>.md を auto-load
-        + spec ファイルを Read + instructions/engineer.md を参照
+        + spec ファイルを Read + .claude/rules/engineer.md を参照
 engineer: 実装 → planner の inbox に完了 report
 planner: reviewer の inbox に dispatch (設計→コード)
 reviewer: design + code review → planner に report
@@ -53,17 +85,17 @@ orchestrator: 殿に最終報告 + memory/<role>.md に学び追記
 .
 ├── .claude/
 │   ├── agents/                 # planner, design-reviewer, code-reviewer (in-pane dispatch)
-│   ├── settings.json           # hooks, permissions
-│   ├── hooks/                  # SessionStart, PostToolUse 等
-│   └── skills/                 # プロジェクト固有スキル
-├── instructions/               # 各 role が SessionStart で読む手順書
-│   ├── orchestrator.md
-│   ├── planner.md
-│   ├── reviewer.md
-│   ├── engineer.md
-│   ├── common/                 # forbidden_actions, protocol, task_flow
-│   ├── cli_specific/           # claude / codex / copilot / kimi
-│   └── roles/                  # role 別詳細
+│   ├── settings.json           # hooks block + permissions
+│   ├── hooks/                  # SessionStart / PreToolUse / SubagentStop / UserPromptSubmit
+│   ├── skills/                 # 公式 SKILL.md (slash command)
+│   └── rules/                  # 各 role が SessionStart で読む手順書 (公式 path-scoped rules)
+│       ├── orchestrator.md
+│       ├── planner.md
+│       ├── reviewer.md
+│       ├── engineer.md
+│       ├── common/             # forbidden_actions, protocol, task_flow
+│       ├── cli_specific/       # claude / codex / copilot / kimi
+│       └── roles/              # role 別詳細
 ├── specs/                      # planner が作成する仕様書群
 │   └── YYYY-MM-DD-<topic>/
 ├── memory/                     # role 別 persistent context
@@ -93,7 +125,7 @@ orchestrator: 殿に最終報告 + memory/<role>.md に学び追記
 1. `memory/MEMORY.md` (index)
 2. `memory/<自分の role 名>.md` (自分の memory)
 
-を自動 context 注入される。これに加え、各 pane は `instructions/<role>.md` を初動で Read することを期待される (start_session.sh の起動順序に組み込み済み)。
+を自動 context 注入される。これに加え、各 pane は `.claude/rules/<role>.md` を初動で Read することを期待される (start_session.sh の起動順序に組み込み済み)。
 
 短時間 dispatch を Agent tool で行う場合、subagent 側にも同じ SessionStart hook が走る。
 
@@ -182,14 +214,25 @@ Haiku grade = ファイル特定済 + 入出力明確 + 5-15 分実行可。
 
 各 role の責務・制約・SKIP 条件・dispatch ルールは:
 
-- `instructions/orchestrator.md` — orchestrator pane の手順書
-- `instructions/planner.md` — planner pane の手順書
-- `instructions/reviewer.md` — reviewer pane の手順書
-- `instructions/engineer.md` — engineer pane の手順書 (engineer1..7 共通)
-- `instructions/roles/<role>_role.md` — role 別の詳細 (CLI 個別の振る舞い等)
-- `instructions/common/` — forbidden_actions / protocol / task_flow (全 role 共通)
-- `instructions/cli_specific/` — claude / codex / copilot / kimi 別の道具袋
+- `.claude/rules/orchestrator.md` — orchestrator pane の手順書
+- `.claude/rules/planner.md` — planner pane の手順書
+- `.claude/rules/reviewer.md` — reviewer pane の手順書
+- `.claude/rules/engineer.md` — engineer pane の手順書 (engineer1..7 共通)
+- `.claude/rules/roles/<role>_role.md` — role 別の詳細 (CLI 個別の振る舞い等)
+- `.claude/rules/common/` — forbidden_actions / protocol / task_flow (全 role 共通)
+- `.claude/rules/cli_specific/` — claude / codex / copilot / kimi 別の道具袋
 
 Subagent (Agent tool) として呼ばれる場合の仕様は:
-- Project-level: `.claude/agents/<name>.md` (planner / design-reviewer / code-reviewer)
+- Project-level: `.claude/agents/<name>.md` (planner / design-reviewer / code-reviewer / claude-code-expert)
 - User-level: `~/.claude/agents/<name>.md` (frontend / backend / infra / db / chrome-extension / native-app / game / ml / qa engineers)
+
+## 12. 公式仕様の知識ベース
+
+Anthropic Claude Code の公式仕様 (settings.json / hooks / subagents / skills / MCP / memory / slash commands / Agent Teams) は `memory/claude-code-expert.md` に記録されている。harness 設計の判断時は **必ず** この memory を参照する (claude-code-expert subagent を召喚すれば自動 inject される)。
+
+主要発見:
+- subagent → subagent dispatch は **公式 NG** (3 箇所明記、`§2 §10.1`)
+- `instructions/<role>.md` は v2 自前構造で公式機構ではない → `.claude/rules/<role>.md` に migrate 済
+- `memory/<agent>.md` の手動 inject (SessionStart hook) は subagent frontmatter `memory: project` の併用で公式準拠
+- 旧 `Task` tool は v2.1.63 で **`Agent` tool に rename**
+- **Agent Teams** (experimental) が殿の tmux multi-pane の公式版 (中期で移行検討候補)

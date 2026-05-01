@@ -203,5 +203,5 @@ bats tests/*.bats tests/unit/*.bats
 
 # Instruction generation must be in sync (same as CI "Build Instructions Check")
 bash scripts/build_instructions.sh
-git diff --exit-code instructions/generated/
+git diff --exit-code .claude/rules/generated/
 ```

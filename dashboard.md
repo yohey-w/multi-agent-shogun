@@ -1,5 +1,5 @@
 # Dashboard
-Last updated: 2026-04-30 (v2 migration in progress)
+Last updated: 2026-04-30 (auto)
 
 > Active tasks only. Historical v1 entries (cmd_001..cmd_080) have been pruned;
 > see git history for archaeology.

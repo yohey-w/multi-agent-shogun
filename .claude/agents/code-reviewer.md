@@ -3,6 +3,7 @@ name: code-reviewer
 description: Use to review code changes (PR diffs, commits, file modifications) BEFORE merge — line-level quality, edge cases, test coverage, error handling, security details (input validation, SQL injection, XSS, SSRF, authn/authz enforcement, secret leakage), dependency security, performance regressions. Use AFTER design-reviewer has approved the architectural intent. SKIP for: high-level spec/architecture review (use design-reviewer).
 tools: [Read, Bash, Grep, Glob, WebFetch]
 model: opus
+memory: project
 ---
 
 # Code Reviewer

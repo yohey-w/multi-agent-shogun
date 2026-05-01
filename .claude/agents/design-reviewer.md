@@ -3,6 +3,7 @@ name: design-reviewer
 description: Use to review specifications, architecture decisions, and high-level design BEFORE implementation begins. Checks: requirement completeness, architectural fit with existing system, scalability/maintainability, security policy (authn/authz model, data classification, threat model), API contract soundness, scope decomposition. SKIP for: line-by-line code review (use code-reviewer instead).
 tools: [Read, Grep, Glob, WebFetch]
 model: opus
+memory: project
 ---
 
 # Design Reviewer

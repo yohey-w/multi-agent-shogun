@@ -613,9 +613,9 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
     echo ""
 
     # -------------------------------------------------------------------------
-    # STEP 6.5: Each pane self-loads its instructions/<role>.md via session-start
+    # STEP 6.5: Each pane self-loads its .claude/rules/<role>.md via session-start
     # -------------------------------------------------------------------------
-    log_info "Each pane self-loads instructions/<role>.md via SessionStart hook"
+    log_info "Each pane self-loads .claude/rules/<role>.md via SessionStart hook"
     echo ""
 
     echo "  Waiting for orchestrator Claude bootstrap (up to 30s)..."
@@ -777,7 +777,7 @@ echo "  Next steps:"
 echo "      attach orchestrator:   tmux attach-session -t shogun       (alias: css)"
 echo "      attach multiagent:     tmux attach-session -t multiagent   (alias: csm)"
 echo ""
-echo "  Each pane auto-loads instructions/<role>.md via the session-start hook."
+echo "  Each pane auto-loads .claude/rules/<role>.md via the session-start hook."
 echo ""
 
 # -----------------------------------------------------------------------------

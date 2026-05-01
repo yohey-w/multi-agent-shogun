@@ -6,6 +6,7 @@
 - [planner](planner.md) — タスク分解 / spec 作成 / dispatch の学び
 - [design-reviewer](design-reviewer.md) — アーキ判断 / security 方針の蓄積
 - [code-reviewer](code-reviewer.md) — レビュー指摘パターン / 過去のミス
+- [claude-code-expert](claude-code-expert.md) — Anthropic Claude Code 公式仕様マスター (settings/hooks/subagents/skills/MCP/memory/agent-teams)
 
 ## User-level Agents
 - [frontend-engineer](frontend-engineer.md)

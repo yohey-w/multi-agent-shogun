@@ -58,5 +58,5 @@ queue/ 配下の肥大化ファイルから古い完了・取消エントリを�
 ## 対象外 (触らないファイル)
 
 - `.claude/projects/.../*.jsonl` (Claude Code 管理)
-- `MEMORY.md` / `memory/*.md` / `config/` / `instructions/`
+- `MEMORY.md` / `memory/*.md` / `config/` / `.claude/rules/`
 - `projects/` (機密プロジェクト)

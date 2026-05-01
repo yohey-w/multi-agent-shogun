@@ -9,8 +9,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-PARTS_DIR="$ROOT_DIR/instructions"
-OUTPUT_DIR="$ROOT_DIR/instructions/generated"
+PARTS_DIR="$ROOT_DIR/.claude/rules"
+OUTPUT_DIR="$ROOT_DIR/.claude/rules/generated"
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -25,7 +25,7 @@ build_instruction_file() {
     local role="$2"
     local output_filename="$3"
     local output_path="$OUTPUT_DIR/$output_filename"
-    local original_file="$ROOT_DIR/instructions/${role}.md"
+    local original_file="$ROOT_DIR/.claude/rules/${role}.md"
 
     echo "Building: $output_filename (CLI: $cli_type, Role: $role)"
 
@@ -120,10 +120,10 @@ generate_agents_md() {
     sed \
         -e 's|CLAUDE\.md|AGENTS.md|g' \
         -e 's|CLAUDE\.local\.md|AGENTS.override.md|g' \
-        -e 's|instructions/orchestrator.md|instructions/generated/codex-orchestrator.md|g' \
-        -e 's|instructions/planner.md|instructions/generated/codex-planner.md|g' \
-        -e 's|instructions/engineer.md|instructions/generated/codex-engineer.md|g' \
-        -e 's|instructions/reviewer.md|instructions/generated/codex-reviewer.md|g' \
+        -e 's|\.claude/rules/orchestrator.md|.claude/rules/generated/codex-orchestrator.md|g' \
+        -e 's|\.claude/rules/planner.md|.claude/rules/generated/codex-planner.md|g' \
+        -e 's|\.claude/rules/engineer.md|.claude/rules/generated/codex-engineer.md|g' \
+        -e 's|\.claude/rules/reviewer.md|.claude/rules/generated/codex-reviewer.md|g' \
         -e 's|~/.claude/|~/.codex/|g' \
         -e 's|\.claude\.json|.codex/config.toml|g' \
         -e 's|\.mcp\.json|config.toml (mcp_servers section)|g' \
@@ -166,10 +166,10 @@ generate_copilot_instructions() {
     sed \
         -e 's|CLAUDE\.md|copilot-instructions.md|g' \
         -e 's|CLAUDE\.local\.md|copilot-instructions.local.md|g' \
-        -e 's|instructions/orchestrator.md|instructions/generated/copilot-orchestrator.md|g' \
-        -e 's|instructions/planner.md|instructions/generated/copilot-planner.md|g' \
-        -e 's|instructions/engineer.md|instructions/generated/copilot-engineer.md|g' \
-        -e 's|instructions/reviewer.md|instructions/generated/copilot-reviewer.md|g' \
+        -e 's|\.claude/rules/orchestrator.md|.claude/rules/generated/copilot-orchestrator.md|g' \
+        -e 's|\.claude/rules/planner.md|.claude/rules/generated/copilot-planner.md|g' \
+        -e 's|\.claude/rules/engineer.md|.claude/rules/generated/copilot-engineer.md|g' \
+        -e 's|\.claude/rules/reviewer.md|.claude/rules/generated/copilot-reviewer.md|g' \
         -e 's|~/.claude/|~/.copilot/|g' \
         -e 's|\.claude\.json|.copilot/config.json|g' \
         -e 's|\.mcp\.json|.copilot/mcp-config.json|g' \
@@ -204,10 +204,10 @@ generate_kimi_instructions() {
     sed \
         -e 's|CLAUDE\.md|agents/default/system.md|g' \
         -e 's|CLAUDE\.local\.md|agents/default/system.local.md|g' \
-        -e 's|instructions/orchestrator.md|instructions/generated/kimi-orchestrator.md|g' \
-        -e 's|instructions/planner.md|instructions/generated/kimi-planner.md|g' \
-        -e 's|instructions/engineer.md|instructions/generated/kimi-engineer.md|g' \
-        -e 's|instructions/reviewer.md|instructions/generated/kimi-reviewer.md|g' \
+        -e 's|\.claude/rules/orchestrator.md|.claude/rules/generated/kimi-orchestrator.md|g' \
+        -e 's|\.claude/rules/planner.md|.claude/rules/generated/kimi-planner.md|g' \
+        -e 's|\.claude/rules/engineer.md|.claude/rules/generated/kimi-engineer.md|g' \
+        -e 's|\.claude/rules/reviewer.md|.claude/rules/generated/kimi-reviewer.md|g' \
         -e 's|~/.claude/|~/.kimi/|g' \
         -e 's|\.claude\.json|.kimi/config.json|g' \
         -e 's|\.mcp\.json|.kimi/mcp.json|g' \
@@ -241,7 +241,7 @@ generate_kimi_instructions
 
 echo ""
 echo "=== Build Complete ==="
-echo "Output directory: $OUTPUT_DIR"
+echo "Output directory: $OUTPUT_DIR (.claude/rules/generated/)"
 echo ""
 echo "Generated instruction files:"
 ls -lh "$OUTPUT_DIR"/*.md
