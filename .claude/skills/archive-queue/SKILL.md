@@ -34,7 +34,7 @@ queue/ 配下の肥大化ファイルから古い完了・取消エントリを�
 
 | ファイル | 単位 | フィルタ |
 |----------|------|----------|
-| `queue/shogun_to_karo.yaml` | cmd エントリ | id < cutoff AND status in {done, cancelled} |
+| `queue/orchestrator_to_planner.yaml` | cmd エントリ | id < cutoff AND status in {done, cancelled} |
 | `dashboard.md` | `## ✅ 直近の完了` セクション内の `- **cmd_NNN**` 行 | cmd_id < cutoff |
 | `queue/reports/gunshi_report.yaml` | YAML ドキュメント | parent_cmd < cutoff AND status in {done, cancelled} |
 | `queue/inbox/*.yaml` | messages エントリ | read:true AND content内の全cmd_id < cutoff |

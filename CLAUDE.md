@@ -10,12 +10,12 @@
 
 | Role           | tmux session : pane         | 役割                                                     | デフォルト model |
 |----------------|------------------------------|----------------------------------------------------------|-------------------|
-| orchestrator   | `shogun:main`                | 殿の要件を受領し planner に dispatch、最終報告を殿に返す | Opus              |
+| orchestrator   | `orchestrator:main`                | 殿の要件を受領し planner に dispatch、最終報告を殿に返す | Opus              |
 | planner        | `multiagent:agents.0`        | spec 化 + engineer/reviewer に dispatch、コードは書かない | Sonnet            |
 | engineer1..7   | `multiagent:agents.1..7`     | spec を実装する作業 pane (並列実行可)                    | Sonnet            |
 | reviewer       | `multiagent:agents.8`        | 設計レビュー + コードレビュー (実装前 / merge 前)        | Opus              |
 
-(`shogun` / `multiagent` は tmux session 名としての歴史的な keyword。役割名は orchestrator / planner / reviewer / engineer に統一済み。)
+(`orchestrator` (1 pane) と `multiagent` (9 pane) の 2 つの tmux session で動作する。)
 
 各 pane は Agent tool を使用して subagent (`.claude/agents/`) を一時的に dispatch することもできるが、長時間並列タスクは **必ず別 pane に inbox 経由で投げる**。
 
@@ -64,7 +64,7 @@ User-level (`~/.claude/agents/`):
 ## 2. 標準ワークフロー
 
 ```
-殿 → orchestrator pane (shogun:main): 要件提示
+殿 → orchestrator pane (orchestrator:main): 要件提示
 orchestrator: planner pane の inbox に dispatch (queue/inbox/planner.yaml)
 planner: superpowers:brainstorming で対話 (必要時)
 planner: specs/<topic>/ に Haiku grade 仕様書群を作成
@@ -159,7 +159,7 @@ Haiku grade = ファイル特定済 + 入出力明確 + 5-15 分実行可。
 - `scripts/inbox_watcher.sh` が各 inbox を監視し、対応 tmux pane にプロンプトを送る (event-driven、fswatch on macOS / inotifywait on Linux)
 - spec ファイル (`specs/<topic>/<task>.md`) が作業の真実情報源
 - memory (`memory/<role>.md`) は学習・規約だけを永続化 (進行中 state は書かない、§9 参照)
-- 殿 ↔ orchestrator は通常会話 (`tmux attach-session -t shogun`)
+- 殿 ↔ orchestrator は通常会話 (`tmux attach-session -t orchestrator`)
 - orchestrator pane 内での短時間 subagent dispatch (Agent tool) は補助的に許可、ただし長時間タスクは必ず別 pane に inbox 経由で投げる
 
 メッセージスキーマと protocol は `queue/README.md` 参照。

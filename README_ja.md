@@ -51,12 +51,12 @@ cd agent-orchestra
 ./start_session.sh -h        # 完全な help
 ```
 
-`shogun` という名前の tmux session (orchestrator pane) と `multiagent` session (それ以外) が起動する。
+`orchestrator` (1 pane) と `multiagent` (9 pane: planner + engineer1..7 + reviewer) の 2 つの tmux session が起動する。
 
 ### 3. orchestrator に attach
 
 ```bash
-tmux attach -t shogun        # css alias がインストール済なら css でも可
+tmux attach -t orchestrator        # css alias がインストール済なら css でも可
 ```
 
 これで orchestrator pane に入る。殿 (ユーザ) はここに高レベル要件を投げる。orchestrator は:
@@ -94,7 +94,7 @@ tmux attach -t shogun        # css alias がインストール済なら css で�
 ### 6. session 停止
 
 ```bash
-tmux kill-session -t shogun
+tmux kill-session -t orchestrator
 tmux kill-session -t multiagent
 ```
 

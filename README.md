@@ -51,12 +51,12 @@ Skim `CLAUDE.md` (project instructions, auto-loaded by Claude) and `.claude/sett
 ./start_session.sh -h        # full help
 ```
 
-This boots a tmux session named `shogun` (orchestrator pane) plus a `multiagent` session for the rest.
+This boots a tmux session named `orchestrator` (1 pane) plus a `multiagent` session (9 panes) for planner + engineer1..7 + reviewer.
 
 ### 3. Attach to the orchestrator
 
 ```bash
-tmux attach -t shogun        # or use the css alias if installed
+tmux attach -t orchestrator        # or use the css alias if installed
 ```
 
 You are now talking to the orchestrator. Give it a high-level requirement; it will:
@@ -94,7 +94,7 @@ Once running, these are available in any pane:
 ### 6. Stop the session
 
 ```bash
-tmux kill-session -t shogun
+tmux kill-session -t orchestrator
 tmux kill-session -t multiagent
 ```
 

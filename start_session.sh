@@ -125,8 +125,7 @@ while [[ $# -gt 0 ]]; do
         -c|--clean)                   CLEAN_MODE=true; shift ;;
         -k|--kessen|--all-opus)       ALL_OPUS_MODE=true; shift ;;
         -t|--terminal)                OPEN_TERMINAL=true; shift ;;
-        --orchestrator-no-thinking|--shogun-no-thinking)
-                                      ORCHESTRATOR_NO_THINKING=true; shift ;;
+        --orchestrator-no-thinking)   ORCHESTRATOR_NO_THINKING=true; shift ;;
         -S|--silent)                  SILENT_MODE=true; shift ;;
         -shell|--shell)
             if [[ -n "$2" && "$2" != -* ]]; then
@@ -159,12 +158,12 @@ Roles & default models:
   engineer1..7  Sonnet (Opus in --all-opus)
 
 Sessions:
-  shogun     1 pane  (orchestrator)
+  orchestrator    1 pane  (orchestrator)
   multiagent 9 panes (planner + engineer1..7 + reviewer in a 3x3 grid)
 
 Aliases (suggested):
   csst -> cd <repo> && ./start_session.sh
-  css  -> tmux attach-session -t shogun
+  css  -> tmux attach-session -t orchestrator
   csm  -> tmux attach-session -t multiagent
 
 HELP
@@ -203,7 +202,7 @@ echo ""
 # -----------------------------------------------------------------------------
 log_info "Tearing down existing tmux sessions..."
 tmux kill-session -t multiagent 2>/dev/null && log_info "  multiagent: removed" || log_info "  multiagent: not present"
-tmux kill-session -t shogun     2>/dev/null && log_info "  shogun:     removed" || log_info "  shogun:     not present"
+tmux kill-session -t orchestrator     2>/dev/null && log_info "  orchestrator:removed" || log_info "  orchestrator:not present"
 
 # -----------------------------------------------------------------------------
 # STEP 1.5: Backup dashboard + queue on --clean if non-empty
@@ -390,21 +389,21 @@ if ! command -v tmux &> /dev/null; then
 fi
 
 # -----------------------------------------------------------------------------
-# STEP 5: Create shogun session (orchestrator pane)
+# STEP 5: Create orchestrator session (orchestrator pane)
 # -----------------------------------------------------------------------------
-log_info "Creating orchestrator session (shogun)..."
+log_info "Creating orchestrator session..."
 
-if ! tmux has-session -t shogun 2>/dev/null; then
-    tmux new-session -d -s shogun -n main
+if ! tmux has-session -t orchestrator 2>/dev/null; then
+    tmux new-session -d -s orchestrator -n main
 fi
 
 tmux set-option -g window-size latest
 tmux set-option -g aggressive-resize on
 
 ORCH_PROMPT=$(generate_prompt "orchestrator" "magenta" "$SHELL_SETTING")
-tmux send-keys -t shogun:main "cd \"$(pwd)\" && export PS1='${ORCH_PROMPT}' && clear" Enter
-tmux select-pane -t shogun:main -P 'bg=#002b36'
-tmux set-option -p -t shogun:main @agent_id "orchestrator"
+tmux send-keys -t orchestrator:main "cd \"$(pwd)\" && export PS1='${ORCH_PROMPT}' && clear" Enter
+tmux select-pane -t orchestrator:main -P 'bg=#002b36'
+tmux set-option -p -t orchestrator:main @agent_id "orchestrator"
 
 log_success "  orchestrator pane ready"
 echo ""
@@ -557,12 +556,12 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
         log_info "  orchestrator settings.yaml: thinking=false"
     fi
     IFS='|' read -r _orch_cli _orch_cmd <<< "$(_build_cmd orchestrator opus)"
-    tmux set-option -p -t "shogun:main" @agent_cli "$_orch_cli"
-    tmux send-keys -t shogun:main "$_orch_cmd"
-    tmux send-keys -t shogun:main Enter
+    tmux set-option -p -t "orchestrator:main" @agent_cli "$_orch_cli"
+    tmux send-keys -t orchestrator:main "$_orch_cmd"
+    tmux send-keys -t orchestrator:main Enter
     if declare -F get_model_display_name >/dev/null 2>&1; then
         _orch_display=$(get_model_display_name "orchestrator" 2>/dev/null || echo "Opus")
-        tmux set-option -p -t "shogun:main" @model_name "$_orch_display" 2>/dev/null || true
+        tmux set-option -p -t "orchestrator:main" @model_name "$_orch_display" 2>/dev/null || true
     fi
     log_info "  orchestrator launched ($_orch_cli)"
 
@@ -620,7 +619,7 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
 
     echo "  Waiting for orchestrator Claude bootstrap (up to 30s)..."
     for i in {1..30}; do
-        if tmux capture-pane -t shogun:main -p | grep -q "bypass permissions"; then
+        if tmux capture-pane -t orchestrator:main -p | grep -q "bypass permissions"; then
             echo "  orchestrator ready (${i}s)"
             break
         fi
@@ -643,9 +642,9 @@ with open(f,'w') as fh: yaml.safe_dump(d, fh, default_flow_style=False, allow_un
     sleep 1
 
     # orchestrator
-    _orch_watcher_cli=$(tmux show-options -p -t "shogun:main" -v @agent_cli 2>/dev/null || echo "claude")
+    _orch_watcher_cli=$(tmux show-options -p -t "orchestrator:main" -v @agent_cli 2>/dev/null || echo "claude")
     nohup env ASW_DISABLE_ESCALATION=1 ASW_PROCESS_TIMEOUT=0 ASW_DISABLE_NORMAL_NUDGE=0 \
-        bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" orchestrator "shogun:main" "$_orch_watcher_cli" \
+        bash "$SCRIPT_DIR/scripts/inbox_watcher.sh" orchestrator "orchestrator:main" "$_orch_watcher_cli" \
         >> "$SCRIPT_DIR/logs/inbox_watcher_orchestrator.log" 2>&1 &
     disown
 
@@ -755,8 +754,8 @@ tmux list-sessions | sed 's/^/      /'
 echo ""
 echo "  Pane layout:"
 echo ""
-echo "      [shogun]      orchestrator"
-echo "      [multiagent]  3x3 grid:"
+echo "      [orchestrator]  orchestrator"
+echo "      [multiagent]    3x3 grid:"
 echo "                       planner    engineer3   engineer6"
 echo "                       engineer1  engineer4   engineer7"
 echo "                       engineer2  engineer5   reviewer"
@@ -766,7 +765,7 @@ if [ "$SETUP_ONLY" = true ]; then
     echo "  --setup-only: Claude was NOT launched."
     echo ""
     echo "  Manual launch:"
-    echo "      tmux send-keys -t shogun:main 'claude --dangerously-skip-permissions' Enter"
+    echo "      tmux send-keys -t orchestrator:main 'claude --dangerously-skip-permissions' Enter"
     echo "      for p in \$(seq $PANE_BASE $((PANE_BASE+8))); do"
     echo "          tmux send-keys -t multiagent:agents.\$p 'claude --dangerously-skip-permissions' Enter"
     echo "      done"
@@ -774,7 +773,7 @@ if [ "$SETUP_ONLY" = true ]; then
 fi
 
 echo "  Next steps:"
-echo "      attach orchestrator:   tmux attach-session -t shogun       (alias: css)"
+echo "      attach orchestrator:   tmux attach-session -t orchestrator       (alias: css)"
 echo "      attach multiagent:     tmux attach-session -t multiagent   (alias: csm)"
 echo ""
 echo "  Each pane auto-loads .claude/rules/<role>.md via the session-start hook."
@@ -786,7 +785,7 @@ echo ""
 if [ "$OPEN_TERMINAL" = true ]; then
     log_info "Opening Windows Terminal tabs..."
     if command -v wt.exe &> /dev/null; then
-        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t shogun" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
+        wt.exe -w 0 new-tab wsl.exe -e bash -c "tmux attach-session -t orchestrator" \; new-tab wsl.exe -e bash -c "tmux attach-session -t multiagent"
         log_success "  terminal tabs opened"
     else
         log_warn "  wt.exe not found; attach manually"
