@@ -83,6 +83,10 @@
 !context/matsmoneylabo.md
 !context/coconmusicschoolsystem.md
 
+# cmd_375 Phase 3 gate ③: 仕様書整備 spec/ 配下を git 追跡対象化
+!context/spec/
+!context/spec/**
+
 # Python venv
 !requirements.txt
 
