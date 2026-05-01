@@ -344,7 +344,7 @@ if [ "$CLEAN_MODE" = true ]; then
 # Dashboard
 最終更新: ${TIMESTAMP}
 
-## 要対応 - 殿のご判断待ち
+## 要対応 - user のご判断待ち
 なし
 
 ## 進行中

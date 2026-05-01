@@ -23,7 +23,7 @@ user-invocable: true
 `specs/` 内の任意の task spec を読み込み、`agent:` frontmatter フィールドで
 指定された engineer subagent を Agent tool で起動する。
 
-殿が spec の細部を知らなくても `/dispatch-engineer <task-id>` と打つだけで
+user が spec の細部を知らなくても `/dispatch-engineer <task-id>` と打つだけで
 適切な engineer に仕事が渡る。
 
 ## Usage
@@ -120,7 +120,7 @@ Agent tool invocation:
 
 ### Step 5 — 結果の整理
 
-engineer の完了レポートを受け取り、殿に要約して報告する：
+engineer の完了レポートを受け取り、user に要約して報告する：
 
 ```
 Dispatch 完了レポート:
@@ -138,12 +138,12 @@ Dispatch 完了レポート:
 |------|------|
 | spec ファイルが見つからない | エラーで停止、`find specs/ -name "*.md"` で候補一覧を提示 |
 | `agent:` フィールドがない | エラーで停止、spec を開いて手動確認を促す |
-| 依存 task が未完了 | 警告を出し、殿に続行確認を求める |
-| engineer が失敗を返す | 失敗内容をそのまま殿に伝え、次の手順を提案 |
+| 依存 task が未完了 | 警告を出し、user に続行確認を求める |
+| engineer が失敗を返す | 失敗内容をそのままuser に伝え、次の手順を提案 |
 
 ## Notes
 
-- dispatch 後の engineer は独立コンテキストで動くため、殿の現在のコンテキストに
+- dispatch 後の engineer は独立コンテキストで動くため、user の現在のコンテキストに
   影響しない
 - 複数 task を連続 dispatch するときは `depends_on` の順序を守ること
 - engineer の memory ファイルは `memory/<agent-name>.md` を参照している

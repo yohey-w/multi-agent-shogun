@@ -158,7 +158,7 @@ JSON Schema 公開: <https://json.schemastore.org/claude-code-settings.json>
 |---|---|---|
 | 大量 file 削除の事前 stop | PreToolUse + matcher `Bash` + `if: "Bash(rm *)"` | 10 file 超で exit 2 |
 | 副 agent 結果の validation | SubagentStop | spec の Verification を自動実行 |
-| 殿への完了通知 | Stop | 現状 inbox watcher を pull 型 → push 型に |
+| userへの完了通知 | Stop | 現状 inbox watcher を pull 型 → push 型に |
 | project 外修正の禁止 | PreToolUse + Edit/Write | path が project root 外なら exit 2 |
 | auto memory 更新 trigger | SubagentStop | engineer 完了時に `memory/<agent>.md` の更新を促す prompt agent hook |
 
@@ -224,7 +224,7 @@ initialPrompt: <auto-submit prompt>  # --agent で main session 化したとき
 
 | パターン | 仕組み | 適合度 |
 |---|---|---|
-| **Main conversation = orchestrator** | 殿 (CLI) が直接 planner / engineer を Agent tool で dispatch | ◎ シンプル、現行 v2 の改修最小 |
+| **Main conversation = orchestrator** | user (CLI) が直接 planner / engineer を Agent tool で dispatch | ◎ シンプル、現行 v2 の改修最小 |
 | **Chain subagents** | main が code-reviewer → optimizer と sequential dispatch | ○ 順序ある時 |
 | **Skills with `context: fork`** | skill が forked subagent で実行、agent type 指定可 | ○ orchestration を skill 化 |
 | **Agent Teams** | lead session が teammate session を spawn、mailbox/task list 経由通信 | ◎ tmux multi-pane を **公式機構**で再現 |
@@ -303,7 +303,7 @@ precedence: enterprise > personal > project (同名時)。Plugin は `plugin-nam
 
 | skill | 用途 | invocation |
 |---|---|---|
-| `/dispatch-engineer` | 殿 → planner → engineer の自動 dispatch wrapper | user-invocable |
+| `/dispatch-engineer` | user → planner → engineer の自動 dispatch wrapper | user-invocable |
 | `/archive-spec` | 完了 spec を `specs/archive/YYYY-MM/` に移動 | user-invocable + auto |
 | `/update-memory` | engineer 完了時に `memory/<agent>.md` を curate | `disable-model-invocation: true` で SubagentStop hook から呼出 |
 | `/init-project` | `projects/<name>/` 雛形を作成 | user-invocable |
@@ -342,7 +342,7 @@ precedence: enterprise > personal > project (同名時)。Plugin は `plugin-nam
 
 ### 5.5 v2 で **作るべき** slash command
 
-殿視点の頻用 op を skill 化:
+user視点の頻用 op を skill 化:
 
 ```
 /spec       — 要件から spec を生成 (specs/<topic>/)
@@ -522,17 +522,17 @@ teammate spawn 時に既存 subagent name を指定可。ただし:
 - session resumption (`/resume`, `/rewind`) で in-process teammate は復元されない
 - "One team per session"
 
-### 8.7 v2 殿の方針との比較
+### 8.7 v2 userの方針との比較
 
-| 殿の v2 方針 | Agent Teams |
+| userの v2 方針 | Agent Teams |
 |---|---|
 | tmux multi-pane で複数 role を独立 Claude session 化 | ✅ split panes mode で同等 |
 | queue/inbox 経由連携 | ✅ mailbox + shared task list で同等 (file lock も標準装備) |
 | 各 pane が Agent tool で subagent を一時 dispatch | ✅ 各 teammate session 内で Agent tool 利用可 (ただし teammate は subagent を nested できない、これは公式仕様) |
 | pane 間 messaging | ✅ teammate name 指定で direct send |
-| lead session が orchestrator | ✅ team lead = 殿の planner pane に対応 |
+| lead session が orchestrator | ✅ team lead = userの planner pane に対応 |
 
-**重大な発見**: 殿が手動で構築している「tmux + queue/inbox + multi-Claude」アーキテクチャは、**Agent Teams (実験的) の手動再実装**である。公式が experimental である点は注意だが、**長期的には Agent Teams へ移行する判断肢が成立する**。
+**重大な発見**: userが手動で構築している「tmux + queue/inbox + multi-Claude」アーキテクチャは、**Agent Teams (実験的) の手動再実装**である。公式が experimental である点は注意だが、**長期的には Agent Teams へ移行する判断肢が成立する**。
 
 ---
 
@@ -573,9 +573,9 @@ project-root/
 1. **planner subagent からの engineer dispatch 廃止**
    - 現状: `.claude/agents/planner.md` の `tools: [..., Agent]` で planner が engineer を呼ぶ前提
    - 公式仕様: subagent は他 subagent を呼べない → **動かない**
-   - 修正: planner 自身の dispatch 機構を **main conversation (殿の CLI session)** に移す
-     - 案 A: 殿が CLI で `/spec` → planner が specs/ 作成 → 殿が `/dispatch <task-id>` で engineer 起動
-     - 案 B: 殿のセッションを `claude --agent planner` で planner system prompt 化 → 殿 = planner = main thread → Agent tool で engineer 呼出可
+   - 修正: planner 自身の dispatch 機構を **main conversation (userの CLI session)** に移す
+     - 案 A: userが CLI で `/spec` → planner が specs/ 作成 → userが `/dispatch <task-id>` で engineer 起動
+     - 案 B: userのセッションを `claude --agent planner` で planner system prompt 化 → user = planner = main thread → Agent tool で engineer 呼出可
      - 案 C: Agent Teams を有効化、planner = team lead、engineer = teammates
 
 ### 10.2 構造 cleanup (移動 / 統合)
@@ -635,7 +635,7 @@ project-root/
 
 ### 10.4 Agent Teams 採用 (中期, optional)
 
-殿が experimental flag を許容できるなら:
+userが experimental flag を許容できるなら:
 
 ```json
 // ~/.claude/settings.json
@@ -645,7 +645,7 @@ project-root/
 }
 ```
 
-→ tmux pane / queue/inbox / start_session.sh の **大半が不要**になる (殿の自前実装が公式機構に置換)。
+→ tmux pane / queue/inbox / start_session.sh の **大半が不要**になる (userの自前実装が公式機構に置換)。
 
 ただし known limitations:
 - session resume で in-process teammate 復元できない

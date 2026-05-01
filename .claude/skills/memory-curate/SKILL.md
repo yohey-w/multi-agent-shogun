@@ -81,9 +81,9 @@ Read tool で `memory/<agent-name>.md` の全内容を取得し、
 - 既に解決済みの一時的な問題
 - コード conventions / file paths (コードを読めば分かる — CLAUDE.md §8)
 
-### Step 3 — 整理方針の殿への提示
+### Step 3 — 整理方針のuser への提示
 
-Read した内容を分析後、以下の形式で殿に方針を提示する:
+Read した内容を分析後、以下の形式でuser に方針を提示する:
 
 ```
 memory/<agent-name>.md の整理方針:
@@ -104,7 +104,7 @@ memory/<agent-name>.md の整理方針:
 続行しますか？
 ```
 
-殿が確認した場合は Step 4 へ進む。
+user が確認した場合は Step 4 へ進む。
 
 ### Step 4 — アーカイブファイルの生成
 

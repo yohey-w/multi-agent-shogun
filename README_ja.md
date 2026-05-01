@@ -6,7 +6,7 @@ Claude Code 上で **tmux 複数 pane** に専門 role を並列稼働させる�
 
 tmux session 1 つに role 別 pane を立ち上げる:
 
-- **orchestrator** — 殿の要件を受け取り planner に dispatch、最終結果を返す
+- **orchestrator** — user の要件を受け取り planner に dispatch、最終結果を返す
 - **planner** — 要件を Haiku 粒度の仕様書 (`specs/`) に分解し、各 task を担当 engineer に割当
 - **engineer1..7** — 実装 pane。subagent dispatch で frontend / backend / db / ... の専門に化ける
 - **tester** — blind QA pane: spec の AC だけ Read (impl context 排除)、test 実行、PASS/FAIL を報告
@@ -76,13 +76,13 @@ cd agent-orchestra
 tmux attach -t orchestrator        # css alias がインストール済なら css でも可
 ```
 
-これで orchestrator pane に入る。殿 (ユーザ) はここに高レベル要件を投げる。orchestrator は:
+これで orchestrator pane に入る。user (ユーザ) はここに高レベル要件を投げる。orchestrator は:
 
 1. planner に dispatch (`queue/inbox/planner.yaml` 経由)
 2. planner が `specs/<date>-<topic>/` 配下に spec 群を作成
 3. planner が dispatch 指示書を返す
-4. orchestrator (= main session で動いている殿/Claude) が `Agent` tool で engineer を起動
-5. engineer 実装 → reviewer レビュー → orchestrator が殿に最終報告
+4. orchestrator (= main session で動いているuser/Claude) が `Agent` tool で engineer を起動
+5. engineer 実装 → reviewer レビュー → orchestrator がuser に最終報告
 
 ### 4. 便利な skills (slash command)
 

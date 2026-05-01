@@ -21,7 +21,7 @@ user-invocable: true
 
 ## Purpose
 
-殿の要件 (自然言語) を受け取り、`specs/YYYY-MM-DD-<topic>/` 配下に
+user の要件 (自然言語) を受け取り、`specs/YYYY-MM-DD-<topic>/` 配下に
 Haiku 粒度の task spec 群を生成する。
 
 "Haiku grade" = ファイル特定済み + 入出力明確 + 実行時間 5〜15 分程度。
@@ -35,7 +35,7 @@ Haiku 粒度の task spec 群を生成する。
 ```
 
 引数は topic 名 (ディレクトリ名のスラッグに使用)。
-殿がその後で要件を話してくれれば良い (引数なしでも対話形式で受け付ける)。
+user がその後で要件を話してくれれば良い (引数なしでも対話形式で受け付ける)。
 
 ## Behavior
 
@@ -55,7 +55,7 @@ echo "Spec directory: ${TARGET}"
 
 ### Step 2 — 要件の確認と対話
 
-殿の要件が不明確な場合、以下の質問をして補完する (superpower: brainstorming 相当):
+user の要件が不明確な場合、以下の質問をして補完する (superpower: brainstorming 相当):
 
 1. このタスクの **ゴール** は何か？
 2. **影響範囲** はどのファイル・サービスか？
@@ -138,7 +138,7 @@ depends_on: [<task_id>, ...]
 ディレクトリ: <SPEC_DIR>
 
 ## 要件サマリ
-<殿から受けた要件の 3〜5 行要約>
+<user から受けた要件の 3〜5 行要約>
 
 ## タスク一覧
 
@@ -184,7 +184,7 @@ Spec 生成完了:
 
 ## Quality Checks
 
-生成した各 spec ファイルについて以下を確認してから殿に提出:
+生成した各 spec ファイルについて以下を確認してからuser に提出:
 
 - [ ] frontmatter の全必須フィールドが揃っている
 - [ ] `agent:` の値が有効な subagent 名
@@ -195,7 +195,7 @@ Spec 生成完了:
 
 ## Notes
 
-- spec 生成後は自動 dispatch しない — 殿が `/dispatch-engineer` で明示的に起動する
+- spec 生成後は自動 dispatch しない — user が `/dispatch-engineer` で明示的に起動する
 - 不明な点は Step 2 の対話で解消してから spec を書く (曖昧なまま書かない)
 - 既存 spec ディレクトリと topic が被る場合は連番サフィックスを付ける
   (例: `2026-04-30-auth-2/`)

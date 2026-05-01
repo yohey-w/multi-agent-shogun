@@ -41,7 +41,7 @@ Anthropic Claude Code 公式仕様の一次情報源として、本プロジェ�
 > "Subagents cannot spawn other subagents, so `Agent(agent_type)` has no effect in subagent definitions."
 
 - subagent (`.claude/agents/*.md` で定義されたもの) は他の subagent を Agent tool で dispatch できない
-- **dispatch は必ず main conversation (殿の CLI session) から行う**
+- **dispatch は必ず main conversation (user の CLI session) から行う**
 - `Agent` tool を subagent の `tools:` に含めても無効 (動作しない)
 - 根拠: <https://code.claude.com/docs/en/sub-agents> "Restrict which subagents can be spawned" セクション
 

@@ -87,7 +87,7 @@ for DIR in ${CANDIDATES}; do
 done
 ```
 
-### Step 3 — 殿への確認
+### Step 3 — user への確認
 
 自動 `--all-done` 以外の場合は、アーカイブ前に確認を求める:
 
@@ -102,7 +102,7 @@ done
 続行しますか？ (yes/no)
 ```
 
-殿が "yes" または確認を省いた場合は Step 4 へ進む。
+user が "yes" または確認を省いた場合は Step 4 へ進む。
 
 ### Step 4 — アーカイブ実行
 

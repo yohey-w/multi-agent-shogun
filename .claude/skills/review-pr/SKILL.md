@@ -122,9 +122,9 @@ Agent tool で design-reviewer を呼び出し、アーキテクチャ・セキ�
 ### Step 4 — design-reviewer の結果確認
 
 design-reviewer が FAIL を返した場合:
-- 殿にレポートを提示
+- user にレポートを提示
 - code-reviewer を続行するか確認
-- 殿の指示がなければ中断し、設計修正を促す
+- user の指示がなければ中断し、設計修正を促す
 
 design-reviewer が PASS または CONDITIONAL_PASS の場合:
 - Step 5 へ進む
@@ -170,7 +170,7 @@ Agent tool で code-reviewer を呼び出し、実装細部を確認する。
 
 ### Step 6 — 統合レポートの生成
 
-両レビュアーの結果を統合して殿に報告する。
+両レビュアーの結果を統合してuser に報告する。
 
 ```markdown
 ## Review Report
@@ -207,7 +207,7 @@ Agent tool で code-reviewer を呼び出し、実装細部を確認する。
 |------|------|
 | git 操作失敗 | エラーメッセージと共に停止、ブランチ名を確認するよう促す |
 | gh CLI が使えない (PR 番号指定時) | `gh` コマンドが不要な方法で代替、もしくはブランチ名での指定を促す |
-| design-reviewer が FAIL | 殿に提示して中断、修正後に再実行を促す |
+| design-reviewer が FAIL | user に提示して中断、修正後に再実行を促す |
 | diff が極端に大きい (>5000 行) | PR を分割するよう警告し、重要ファイルのみに絞ったレビューを提案 |
 
 ## Notes
@@ -215,5 +215,5 @@ Agent tool で code-reviewer を呼び出し、実装細部を確認する。
 - `context: fork` により worktree を分けるため、メインの作業コンテキストは汚染されない
 - design-reviewer は `.claude/agents/design-reviewer.md` のシステムプロンプトを使用
 - code-reviewer は `.claude/agents/code-reviewer.md` のシステムプロンプトを使用
-- PR マージの実行はこの skill の範囲外 — 殿が手動で行う
+- PR マージの実行はこの skill の範囲外 — user が手動で行う
 - 継続的インテグレーションに組み込む場合は `PreToolUse` hook 経由で自動起動可

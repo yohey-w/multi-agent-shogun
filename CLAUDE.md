@@ -10,7 +10,7 @@
 
 | Role           | tmux session : pane         | 役割                                                     | デフォルト model |
 |----------------|------------------------------|----------------------------------------------------------|-------------------|
-| orchestrator   | `orchestrator:main`                | 殿の要件を受領し planner に dispatch、最終報告を殿に返す | Opus              |
+| orchestrator   | `orchestrator:main`                | user の要件を受領し planner に dispatch、最終報告をuser に返す | Opus              |
 | planner        | `multiagent:agents.0`        | spec 化 + engineer/tester/reviewer に dispatch、コードは書かない | Sonnet            |
 | engineer1..7   | `multiagent:agents.1..7`     | spec を実装する作業 pane (並列実行可)                    | Sonnet            |
 | tester         | `multiagent:agents.8`        | 実装コンテキスト無しで spec の AC のみ見て test 実行 (blind QA) | Sonnet            |
@@ -22,7 +22,7 @@
 
 ### Subagents (`.claude/agents/`)
 
-公式仕様により **subagent → subagent dispatch は不可** (`memory/claude-code-expert.md §2 §10.1`)。dispatch は必ず main session (殿の CLI) から行う。subagent の `tools:` には `Agent` を含めない。
+公式仕様により **subagent → subagent dispatch は不可** (`memory/claude-code-expert.md §2 §10.1`)。dispatch は必ず main session (user の CLI) から行う。subagent の `tools:` には `Agent` を含めない。
 
 Project-level (`.claude/agents/`):
 - `planner` — 要件分解 + spec 作成 + dispatch 指示書を main session に返す (実装はしない)
@@ -38,7 +38,7 @@ User-level (`~/.claude/agents/`):
 
 ### Skills (`.claude/skills/`)
 
-殿の頻用 op を slash command 化。`/<skill-name>` で起動可。
+user の頻用 op を slash command 化。`/<skill-name>` で起動可。
 
 | skill | 用途 |
 |-------|------|
@@ -65,7 +65,7 @@ User-level (`~/.claude/agents/`):
 ## 2. 標準ワークフロー
 
 ```
-殿 → orchestrator pane (orchestrator:main): 要件提示
+user → orchestrator pane (orchestrator:main): 要件提示
 orchestrator: planner pane の inbox に dispatch (queue/inbox/planner.yaml)
 planner: superpowers:brainstorming で対話 (必要時)
 planner: specs/<topic>/ に Haiku grade 仕様書群を作成
@@ -79,7 +79,7 @@ planner: tester + reviewer の inbox に**並列** dispatch
   reviewer: 実装 diff + design レビュー → 指摘 0 or N を planner に
 両 ✅ → planner が orchestrator に最終 report
 いずれか ✗ → planner が engineer に redispatch (失敗根拠付き)
-orchestrator: 殿に最終報告 + memory/<role>.md に学び追記
+orchestrator: user に最終報告 + memory/<role>.md に学び追記
 ```
 
 ## 3. ディレクトリ構造
@@ -163,7 +163,7 @@ Haiku grade = ファイル特定済 + 入出力明確 + 5-15 分実行可。
 - `scripts/inbox_watcher.sh` が各 inbox を監視し、対応 tmux pane にプロンプトを送る (event-driven、fswatch on macOS / inotifywait on Linux)
 - spec ファイル (`specs/<topic>/<task>.md`) が作業の真実情報源
 - memory (`memory/<role>.md`) は学習・規約だけを永続化 (進行中 state は書かない、§9 参照)
-- 殿 ↔ orchestrator は通常会話 (`tmux attach-session -t orchestrator`)
+- user ↔ orchestrator は通常会話 (`tmux attach-session -t orchestrator`)
 - orchestrator pane 内での短時間 subagent dispatch (Agent tool) は補助的に許可、ただし長時間タスクは必ず別 pane に inbox 経由で投げる
 
 メッセージスキーマと protocol は `queue/README.md` 参照。
@@ -240,4 +240,4 @@ Anthropic Claude Code の公式仕様 (settings.json / hooks / subagents / skill
 - `instructions/<role>.md` は v2 自前構造で公式機構ではない → `.claude/rules/<role>.md` に migrate 済
 - `memory/<agent>.md` の手動 inject (SessionStart hook) は subagent frontmatter `memory: project` の併用で公式準拠
 - 旧 `Task` tool は v2.1.63 で **`Agent` tool に rename**
-- **Agent Teams** (experimental) が殿の tmux multi-pane の公式版 (中期で移行検討候補)
+- **Agent Teams** (experimental) がuser の tmux multi-pane の公式版 (中期で移行検討候補)

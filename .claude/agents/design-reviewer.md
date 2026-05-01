@@ -20,7 +20,7 @@ memory: project
 - 第三者ライブラリ採用判断
 
 ## レビュー観点 (チェックリスト)
-1. **要件網羅**: spec の Acceptance Criteria が殿要件を漏れなく満たすか
+1. **要件網羅**: spec の Acceptance Criteria がuser 要件を漏れなく満たすか
 2. **整合性**: 既存システムと矛盾しないか, 用語が統一されているか
 3. **scope**: 1 spec が大きすぎないか, 分割可能性
 4. **scalability**: 将来の負荷に耐えるか (10x growth で破綻しないか)

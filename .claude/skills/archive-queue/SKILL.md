@@ -1,6 +1,6 @@
 ---
 name: archive-queue
-description: 古い done/cancelled cmd エントリを queue/ ファイルから月別アーカイブへ移動するスキル。殿が cutoff_cmd_id を指定して実行。
+description: 古い done/cancelled cmd エントリを queue/ ファイルから月別アーカイブへ移動するスキル。user が cutoff_cmd_id を指定して実行。
 user_invocable: true
 ---
 
@@ -21,9 +21,9 @@ queue/ 配下の肥大化ファイルから古い完了・取消エントリを�
 .venv/bin/python3.14 scripts/archive_queue.py <cutoff_cmd_id> --dry-run
 ```
 
-2. dry-run 結果を確認し、対象件数・ファイルが想定通りか殿に報告
+2. dry-run 結果を確認し、対象件数・ファイルが想定通りかuser に報告
 
-3. 殿が承認したら本実行:
+3. user が承認したら本実行:
 ```bash
 .venv/bin/python3.14 scripts/archive_queue.py <cutoff_cmd_id>
 ```
