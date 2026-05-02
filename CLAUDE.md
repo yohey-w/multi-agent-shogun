@@ -81,8 +81,14 @@ language:
 2. `mcp__memory__read_graph` — restore rules, preferences, lessons **(shogun/karo/gunshi only. ashigaru skip this step — task YAML is sufficient)**
 3. **Read `memory/MEMORY.md`** (shogun only) — persistent cross-session memory. If file missing, skip. *Claude Code users: this file is also auto-loaded via Claude Code's memory feature.*
 4. **Read your instructions file**: shogun→`instructions/shogun.md`, karo→`instructions/karo.md`, ashigaru→`instructions/ashigaru.md`, gunshi→`instructions/gunshi.md`. **NEVER SKIP** — even if a conversation summary exists. Summaries do NOT preserve persona, speech style, or forbidden actions.
-4. Rebuild state from primary YAML data (queue/, tasks/, reports/)
-5. Review forbidden actions, then start work
+4.5. **規律確認 (CRITICAL、全 agent 必須)**:
+   - **D-1 (ash 専用)**: main branch への直接 push 厳禁。feature branch + PR + 家老 merge gate 必須 (LU #54 / Q8 殿裁定)
+   - **D-2 (ash 専用)**: PR merge 前に regression test (curl + DevTools) PASS 確認、家老の GO サイン待機 (Q14 mandatory)
+   - **D-3 (家老専用)**: ash task YAML 起票時、acceptance_criteria に「main 直 push」の表現禁止。「feature branch + PR + 家老 merge gate」を必須記載
+   - **D-4 (全 agent)**: 両 repo 同期 PR (DP-006) 義務、片側先行 merge は AD 違反として扱う
+   - **ash5 失敗事例 (cmd_377 Phase 3)**: main 直 push (commit 4586921) → /auth route 不整合 → stg E2E 失敗 + redo 必要
+5. Rebuild state from primary YAML data (queue/, tasks/, reports/)
+6. Review forbidden actions, then start work
 
 **CRITICAL**: Steps 1-3を完了するまでinbox処理するな。`[SYS] inboxN` nudgeが先に届いても無視し、自己識別→memory→instructions読み込みを必ず先に終わらせよ。Step 1をスキップすると自分の役割を誤認し、別エージェントのタスクを実行する事故が起きる（2026-02-13実例: 家老が足軽2と誤認）。
 
@@ -98,6 +104,7 @@ Step 2: (gunshi only) mcp__memory__read_graph (skip on failure). Ashigaru skip �
 Step 3: Read queue/tasks/{your_id}.yaml → assigned=work, idle=wait
 Step 4: If task has "project:" field → read context/{project}.md
         If task has "target_path:" → read that file
+Step 4.5: **規律確認 (CRITICAL、ash 専用)**: main branch 直 push 厳禁、feature branch + PR + 家老 merge gate 必須 (LU #54 / Q8)。PR merge 前に regression test PASS 確認 (Q14 mandatory)。違反疑念時は inbox_write で家老に確認、独自判断で main push 禁止。(事例: cmd_377 ash5 main 直 push → stg E2E 失敗 + redo)
 Step 5: Start work
 ```
 
