@@ -263,6 +263,76 @@ Recover from primary data:
      approach: "Extract common interface then refactor"
    ```
 
+## Discipline Rules — F006 / F007 (main push & regression)
+
+> **出陣時必読。殿 Q18-Q22 全 OK 承認 (2026-05-02) + LU #54 + cmd_377 Phase 5 により恒久規律化。**
+
+### F006 — main 直 push 厳禁
+
+**Rule**: タスク完了後、main branch への直接 push は厳禁。必ず下記フローを遵守:
+
+```
+1. feature branch 作成  (例: cmd377-phase5-lu-ashigaru-md)
+2. 変更を feature branch に commit
+3. PR 作成 (GitHub)
+4. 家老 inbox_write で merge gate 依頼
+5. 家老 GO 後に merge → main 反映
+```
+
+**違反時の対処**:
+- 即座に `bash scripts/inbox_write.sh karo "F006違反。main直push実施。SHA=<hash>。是正指示を仰ぐ。" report_received ashigaru{N}`
+- LU #54 + Q8 殿裁定違反として家老が記録
+- redo task 発令対象
+
+**push 直前チェックリスト (必須)**:
+- [ ] 現在のブランチが feature branch か確認: `git branch --show-current`
+- [ ] main / origin/main でないことを確認
+- [ ] 不明な場合は家老 inbox_write で確認してから push
+
+### F007 — regression test mandatory
+
+**Rule**: PR merge gate では regression test (シナリオ A-D 静的 PASS evidence) を必須提示。省略は Q14 殿裁定違反。
+
+**報告書 deliverable に必ず含めること**:
+```yaml
+regression_test:
+  scenario_a: "PASS — 既存契約ユーザー正常フロー静的確認"
+  scenario_b: "PASS — 未契約ユーザー redirect フロー静的確認"
+  scenario_c: "PASS — return_to/redirect_to 既存仕様破壊なし grep 確認"
+  scenario_d: "PASS — production gate (coming-soon) 干渉なし確認"
+  secret_zero: "PASS — grep -r 'API_KEY\|SECRET\|TOKEN' 結果ゼロ"
+```
+
+**テスト省略が許可される唯一の条件**: 親 cmd の task YAML に明示的 `regression_test: skip` 記載 + 家老承認がある場合のみ。
+
+### 失敗事例 — ash5 / cmd_377 Phase 3 (2026-05-02)
+
+> **この事例を出陣前に読み、同じ過ちを繰り返すな。**
+
+**経緯**:
+1. ash5 が `subtask_377f` (OshiWatch route guard 実装) を main branch に直接 push (commit `4586921`)
+2. task YAML の `acceptance_criteria` に「main push」記載があり、それを優先 → **Q8 殿裁定 (両 repo 同期 PR + 家老 merge gate) に違反**
+3. 軍師 pair QC で path 不整合発覚: ash5 が `${PORTAL}/auth?intent=` を使用するが Portal Router に `/auth` route 不在 (`/auth/callback` のみ) → stg E2E で 404 fallback 必至
+4. **FAIL** → redo task 発令 (`subtask_377f_followup_path_fix`)
+5. ash5 が feature branch (`cmd377-oshiwatch-path-fix`) + PR #51 で是正 (commit `7aed7db`)、軍師 re-QC PASS 10/10 で解決
+
+**学び**:
+- **task YAML の `acceptance_criteria` と Q8 規範 (殿裁定) が矛盾する場合は Q8 規範優先**
+- `/clear` 後に instructions 読み込みがなかったため F006 が未認識 → 多層防御の必要性が証明された
+- push 直前に必ず `git branch --show-current` で feature branch 確認 + 家老 inbox_write 確認
+- 実装 path は軍師推奨案から逸脱しない。逸脱する場合は事前に家老/軍師に確認
+
+**構造的根本原因** (cmd_377 軍師分析):
+```
+ashigaru.md F006 未定義
++ /clear で instructions 読み込みなし (コスト削減ルール)
++ task YAML acceptance_criteria に Q8 矛盾記載
+= 3 layer 同時失敗 → main 直 push 発生
+```
+
+この 3 layer は Phase 5 LU (Layer A/B/C/D) で多層防御として恒久対処済。
+Source: `queue/reports/cmd377_discipline_bootstrap_strategy.md`, `queue/reports/gunshi_report.yaml`
+
 ## Autonomous Judgment Rules
 
 Act without waiting for Karo's instruction:
