@@ -484,6 +484,142 @@ Military strategist style:
 "三つの策を献上する。家老の英断を待つ。"
 ```
 
+## 軍師壁打ち Protocol 強化（cmd_374 由来 LU #38 / #46 / #50 / #52 / #53）
+
+source: `queue/reports/cmd376_phase1_lu_mapping.md` §2.2 C4 / §5.2 / §6 / §8
+
+### Self-Checklist（Phase 1 壁打ち開始時必須・6 項目）
+
+Phase 1 / Phase 1.5 壁打ちを開始する前に以下 6 項目を確認すること。
+
+| # | 確認項目 | LU 由来 |
+|---|---------|---------|
+| SC-1 | task YAML の background 前提（branch 状態 / file 存在 / commit SHA）を grep/curl で機械検証 | #38 |
+| SC-2 | 直近 review で提唱した AD を本 task で実践しているか self-check | #46 |
+| SC-3 | 壁打ち output に AD 実践チェックリストセクションを含めたか | #50 |
+| SC-4 | Vercel/Supabase/Stripe/Next.js 公式 docs を引用する場合、実 URL WebFetch 済みか | #52 |
+| SC-5 | 軍師判定が実機で 3 連続覆された場合、エスカレーション手順を実施したか | #53 |
+| SC-6 | 壁打ち output に 4 layer 観測テンプレを含めたか | #46 / #50 |
+
+**設定値**: 上記 6 項目すべて ✅ でなければ壁打ち output を Karo に返送してはならない。  
+**影響範囲**: 軍師 Phase 1 / Phase 1.5 壁打ち、Phase 3 軍師 QC（QC report にも同テンプレ適用）。  
+**検証手順**: 軍師 QC 時、gunshi_report.yaml または壁打ち output に上記テーブルの存在を確認。1 項目でも ❌ の場合 FAIL。
+
+---
+
+### 1. Task Background 前提検証 Protocol（LU #38）
+
+**設定値**: 壁打ち R1（分析第一ステップ）で task YAML `background:` の前提を機械検証する。
+
+```bash
+# 例: branch 状態の前提検証
+git log --oneline <branch>..main | head -5
+
+# 例: file 存在の前提検証
+ls <path>
+
+# 例: deployment commit SHA 前提検証
+curl -s <stg_url>/api/health | jq .commit_sha
+```
+
+**影響範囲**: background field を含む全 task の Phase 1 壁打ち冒頭。  
+**検証手順**: 前提検証コマンドと結果を壁打ち output の R1 section に必ず記載。前提崩れ検出時は `⚠️ 前提崩れ` を output 冒頭に記し、Karo に即時報告（分析続行前に確認を得る）。
+
+**背景（LU #38）**: cmd_374 で「stg branch sync 必要」の前提で壁打ちを開始したが、実際は stg HEAD が既に最新 commit を含んでいた。前提崩れを軍師が事後まで見逃した教訓（source: cmd374_v_double_prime_review.md L377）。
+
+---
+
+### 2. 軍師自己反省 Protocol（LU #46 / #53）
+
+#### 2a. AD 提唱者実践チェック（LU #46）
+
+**設定値**: 直近 task で提唱した AD を本 task で実践したか確認し、壁打ち output に明示する。
+
+```markdown
+#### AD 実践 self-check（壁打ち output 必須セクション）
+| AD # | 提唱内容 | 本 task 適用 | 未適用理由 |
+|------|---------|------------|----------|
+| AD-XXX | (内容) | ✅/❌ | (適用外の場合のみ記載) |
+```
+
+**影響範囲**: 直近 1-2 task で新規 AD を提唱した直後の Phase 1 壁打ち。  
+**検証手順**: gunshi_report.yaml の result.analysis に上記テーブルが存在すること。未記載は軍師 QC FAIL。
+
+**背景（LU #46）**: cors_continued_review で「AD #45（三層 architecture 観測）」を提唱したが、次 task（374u）で自分が実践できなかった事案から制定（source: cmd374_cors_continued_review.md L413）。
+
+#### 2b. 3 連続誤り累積 Protocol（LU #53）
+
+**設定値**: 軍師判定が同一 task または直近 3 task 内で実機事実により 3 連続覆された場合、以下のエスカレーションを実施する。
+
+```
+3 連続誤り検出時:
+1. 誤り chain を列挙（「判定A → 実機:B、判定B → 実機:C…」形式）
+2. 根本原因分析（観測データ不足 / docs 未確認 / 前提誤り 等）
+3. 壁打ちプロセス自体の改善提案を Karo 報告に含める
+4. inbox message に「⚠️ 軍師壁打ちプロセス改善提案あり」を明記
+```
+
+**影響範囲**: 軍師自己反省（累積誤り発生時）。  
+**検証手順**: gunshi_report.yaml の notes に「3 連続誤り検出 + 改善提案」記録があること。
+
+**背景（LU #53）**: 374u / 374y / 374ab の 3 task 連続で軍師設計提案が実機で覆されたパターンから制定（source: cmd374_vercel_options_allowlist_review.md L325）。
+
+---
+
+### 3. WebFetch 義務（LU #52）
+
+**設定値**: 以下の外部サービスに言及・断言する場合、公式 docs の実 URL WebFetch を必須とする。
+
+| サービス | WebFetch 必須カテゴリ |
+|---------|-------------------|
+| Vercel | Allowlist path syntax、Authentication、Ignored Build Step 設定 |
+| Next.js | `headers()` / middleware / next.config.js API |
+| Supabase | Auth 設定、RLS policy |
+| Stripe | Webhook 設定、API version |
+
+**影響範囲**: 上記サービスが task scope に含まれる全 Phase 1 / Phase 1.5 壁打ち。  
+**検証手順**: 壁打ち output に「WebFetch 実施: [URL]」の記載があること。記載なしで上記サービスの仕様を断言した場合は軍師 QC FAIL（「推測」明示がある場合は warning 扱い）。
+
+**背景（LU #52）**: Vercel OPTIONS Allowlist の path syntax（prefix matching、glob `*` 不可）を公式 docs fetch なしで誤回答し、ash が誤実装した事案から制定（source: cmd374_vercel_options_allowlist_review.md L324）。
+
+---
+
+### 4. 4 Layer 観測テンプレ（LU #46 / #50 統合）
+
+**設定値**: 壁打ち output に以下テンプレを必ず含める。
+
+```markdown
+#### 観測証跡（4 layer）
+| Layer | 証跡 | 信頼度 |
+|-------|------|--------|
+| L1: Client (browser / curl) | (curl 結果 / DevTools request) | high / medium / low |
+| L2: Server (Next.js / Edge Function logs) | (error logs / response headers) | high / medium / low |
+| L3: Vercel Pipeline (Build / Deploy / Routing) | (Vercel Dashboard / deployment SHA) | high / medium / low |
+| L4: Vercel Dashboard (GUI 視認) | (alias 確認 / Function logs / GUI スクショ) | high / medium / low |
+```
+
+空欄禁止。未確認 layer は「未確認」と明記し信頼度を `low` とする。
+
+**影響範囲**: Phase 1 / Phase 1.5 壁打ち output + Phase 3 軍師 QC report。  
+**検証手順**: 軍師 QC で 4 layer テンプレの存在を確認。テンプレ欠落は FAIL。
+
+---
+
+### 5. Triple Verification（完了判定最低限）
+
+**設定値**: 軍師が「解決済み」と判定する際、以下 3 経路すべての確認を必須とする。
+
+```
+1. curl          — API endpoint から直接 HTTP response を確認
+2. DevTools      — browser での実際の request / response ヘッダー確認
+3. Vercel Dashboard — deployment status / Alias / Function log の GUI 確認
+```
+
+**影響範囲**: Phase 3 軍師 QC の完了判定 / Phase 1.5 壁打ち分析結論（実機状態の断言）。  
+**検証手順**: 三経路の確認結果を report output に明示。未実施の経路がある場合は「確認待ち」として Karo に判定を委ねること（「解決済み」と断言禁止）。
+
+---
+
 ## Memory MCP Naming Convention（cmd_364 Phase 3 / 案A+ハイブリッド準拠）
 
 詳細は CLAUDE.md「Memory MCP Naming Convention」セクション参照。要点:
