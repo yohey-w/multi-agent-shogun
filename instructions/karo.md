@@ -999,3 +999,53 @@ External PRs are reinforcements. Treat with respect.
   - 直接 shared 更新は禁止
 - 観察 (observations) 補助タグ: `"project:aipita"`, `"category:debug-pattern"` 等
 - entity 作成前に必ず scope を判定（aipita 限定 / 横断 / meta のいずれか）
+
+## ash task YAML rule template（Phase 5 LU、cmd_377 由来）
+
+ash 向け task YAML を起票する際、以下 **4 項目を必ず含める**。1 項目でも欠落した task YAML は規律違反として差し戻す。
+
+### 必須 4 項目
+
+| # | 項目 | 必須記載内容 |
+|---|------|------------|
+| R-1 | **main 直 push 厳禁** | `rules:` section に `"main branch 直接 push 禁止 (feature branch + PR + 家老 merge gate 厳守、LU #54 / Q8)"` を明記 |
+| R-2 | **regression test mandatory** | `rules:` section に `"PR merge 前 regression test PASS 確認 (Q14 mandatory) + 家老 GO サイン待機"` を明記 |
+| R-3 | **acceptance_criteria 規範遵守** | `acceptance_criteria:` に `"main 直 push 完了"` `"main に commit SHA 報告"` 等の Q8 矛盾表現を書かない。`"feature branch + PR 完了"` の形式で記載 |
+| R-4 | **push 直前の家老確認** | `rules:` section に `"push 直前 inbox_write で家老に pair / merge gate 状況確認"` を明記 |
+
+### 起票前 self-check（必須）
+
+```bash
+# acceptance_criteria に Q8 矛盾表現が混入していないか確認
+grep -E "main\s*(直)?\s*push|main.*(commit SHA|push 完了)" queue/tasks/ashigaru*.yaml
+# 出力がゼロであることを確認してから起票完了とする
+```
+
+### task YAML template（copy-paste 用）
+
+詳細 template は `templates/ash_task_yaml_rules.md` 参照。最小 rules section 例:
+
+```yaml
+  rules:
+    - "main branch 直接 push 禁止 (feature branch + PR + 家老 merge gate 厳守、LU #54 / Q8)"
+    - "PR merge 前 regression test PASS 確認 (Q14 mandatory) + 家老 GO サイン待機"
+    - "push 直前 inbox_write で家老に pair / merge gate 状況確認"
+    - "Secret 値出力厳禁 (env 変数名のみ)"
+  acceptance_criteria:
+    - "feature branch <branch名> 作成 + commit + push 完了"
+    - "PR 作成完了 (PR URL 報告)"
+    - "regression test シナリオ A-D 静的 PASS evidence (PR body 記載)"
+    - "家老 merge gate 依頼 inbox_write 送信済"
+```
+
+### 失敗事例（再発防止文脈）
+
+cmd_377 Phase 3 ash5 (subtask_377f) が acceptance_criteria に「main 直 push 完了 + commit SHA 報告」と記載された task YAML の指示通りに行動し、main 直 push (commit 4586921) を実施した結果:
+
+- **Q8 殿裁定** (両 repo 同期 PR + 家老 merge gate) 違反
+- **Q14** (mandatory regression test PR merge gate) skip
+- **LU #54** (家老 orchestration gate) skip
+- path 不整合バグ (`/auth?intent=...` ↔ Portal `/login`) を pre-merge 検出できず stg E2E 失敗
+- Phase 4 進行 NG、redo (subtask_377f_followup_path_fix) 発令必要
+
+**真因は ash5 個人責任ではなく task YAML 起票不備（構造的問題）**。本 rule template で家老起票時の矛盾を根絶する。
