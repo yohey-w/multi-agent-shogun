@@ -225,6 +225,11 @@ Layer 3: YAML Queue      — persistent task data (queue/ — authoritative sour
 Layer 4: Session context — volatile (CLAUDE.md auto-loaded, instructions/*.md, lost on /clear)
 ```
 
+## 観測 Layer 補強
+
+4 layer (client / server / Vercel pipeline / Vercel Dashboard) + 拡張 9 layer デバッグテンプレ → `instructions/gunshi.md`「観測 Layer 補強 protocol」参照（LU #22/#30/#42/#43/#45）。
+AD-008 拡張版 補強 8〜15 (cmd_374 LU #29/#31/#35/#40/#46-#53) → `Ai-pita-Frontend/.knowledge/architecture-decisions.md`「AD-008 補強 拡張版」参照。
+
 ## Memory MCP Naming Convention（cmd_364 Phase 3 / 軍師案A+ハイブリッド）
 
 multi-agent-shogun は複数 project（aipita / MatsMoneyLabo / CoconMusicSchoolSystem 等）の並行運用を前提とする。Memory MCP graph は単一共有のため、entity name に scope prefix を付けて project 跨ぎ汚染を防止する。

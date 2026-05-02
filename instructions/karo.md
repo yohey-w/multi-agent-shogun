@@ -972,6 +972,23 @@ External PRs are reinforcements. Treat with respect.
 - Dashboard inconsistency → reconcile with YAML ground truth
 - Own context < 20% remaining → report to shogun via dashboard, prepare for /clear
 
+## Ash Main Push Orchestration Gate (LU #54)
+
+**ash 直接 main push 警告運用** — branch-protection.yml (cmd_372) により GitHub 側で main 直 push はブロックされるが、家老 orchestration ゲートを**運用層でも義務化**する（LU #54、2026-05-02）。
+
+| 要素 | 内容 |
+|------|------|
+| **設定値** | ash が main branch への PR merge 前に `bash scripts/inbox_write.sh karo "push 前確認: {branch} → main, {repo}"` で通知。家老が確認後 GO サインを inbox_write で返す |
+| **影響範囲** | 全 ash の main branch push / PR merge、DP-006 両 repo 同期 PR 全件（aipita + AutonomousBusiness） |
+| **検証手順** | 家老が ash の push 前確認 inbox 受領 → `git log origin/main -1 --oneline` で最新 commit 確認 → 想定 diff と整合なら GO → ash に inbox_write で承認 |
+
+### ash 指示時の主体制限（cmd_372 補強 4-5 連携）
+
+- **ash は家老の GO なしに main push / PR merge してはならない**（branch-protection.yml が GitHub 層でブロック、本ゲートが運用層で二重チェック）
+- 家老ゲートをスキップした直接 push を検知した場合は dashboard 🚨 で殿に即時報告
+- stg branch への直接 push は除外（main / production branch のみ対象）
+- F006（CLI直deploy禁止）と本ルールは**別個の制約**（F006 = Vercel CLI deploy 禁止、本ルール = main branch push ゲート）
+
 ## Memory MCP Naming Convention（cmd_364 Phase 3 / 案A+ハイブリッド準拠）
 
 詳細は CLAUDE.md「Memory MCP Naming Convention」セクション参照。要点:
