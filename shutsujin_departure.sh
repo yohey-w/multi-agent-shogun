@@ -995,6 +995,40 @@ NINJA_EOF
     done
 
     # ═══════════════════════════════════════════════════════════════════
+    # STEP 6.5.5: 出陣時規律通達（banner 表示 + 全 agent inbox_write 配信）
+    # ───────────────────────────────────────────────────────────────────
+    # Q19 殿裁定 = banner + inbox_write 両方 (殿視認 + agent 確実到達)
+    # ═══════════════════════════════════════════════════════════════════
+    log_war "📜 出陣時規律通達を配信中..."
+    _DISCIPLINE_TS=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # ① banner 表示（SILENT_MODE 時は抑制）
+    if [ "$SILENT_MODE" = false ]; then
+        echo ""
+        echo -e "\033[1;31m  ═══════════════════════════════════════════════════════════════════\033[0m"
+        echo -e "\033[1;33m  ⚔ 出陣時規律通達 (LU #54 / Q8 / Q14)  ${_DISCIPLINE_TS}\033[0m"
+        echo -e "\033[1;31m  ───────────────────────────────────────────────────────────────────\033[0m"
+        echo -e "  1. \033[1;37mash main 直 push 厳禁 (Q8)\033[0m — feature branch + PR + 家老 merge gate のみ"
+        echo -e "  2. \033[1;37mregression test mandatory (Q14)\033[0m — PR merge gate、シナリオ A-D PASS 必須"
+        echo -e "  3. task YAML と Q8 規範矛盾時 = Q8 規範優先・push 直前に家老 inbox で確認"
+        echo -e "  4. 違反時 = LU #54 + Q8/Q14 殿裁定違反として記録・家老 inbox 厳命対象"
+        echo -e "\033[1;33m  ⚠ 失敗事例: ash5 cmd_377 main 直 push → path 不整合 redo (2026-05-02)\033[0m"
+        echo -e "\033[1;31m  ═══════════════════════════════════════════════════════════════════\033[0m"
+        echo ""
+    fi
+
+    # ② 全 agent inbox_write 配信（SILENT_MODE でも実施）
+    _DISCIPLINE_MSG="【出陣時規律通達 ${_DISCIPLINE_TS}】1. ash main 直 push 厳禁 (Q8) — feature branch + PR + 家老 merge gate のみ | 2. regression test mandatory PR merge gate (Q14) — シナリオ A-D 静的 PASS evidence 必須 | 3. task YAML と Q8 規範矛盾時は Q8 規範優先・push 直前に家老 inbox_write で確認 | 4. 違反時 = LU #54 + Q8/Q14 殿裁定違反として記録・家老 inbox 厳命対象 | ⚠ 失敗事例: ash5 cmd_377 Phase 3 main 直 push → path 不整合 redo (2026-05-02)"
+
+    _DISCIPLINE_COUNT=0
+    for _agent in karo gunshi $_ASHIGARU_IDS_STR; do
+        bash "$SCRIPT_DIR/scripts/inbox_write.sh" "$_agent" "$_DISCIPLINE_MSG" "discipline_notice" "shutsujin_departure" 2>/dev/null || true
+        _DISCIPLINE_COUNT=$((_DISCIPLINE_COUNT + 1))
+    done
+    log_success "  └─ 出陣時規律通達 ${_DISCIPLINE_COUNT} agent 配信完了（banner: $([ "$SILENT_MODE" = true ] && echo '抑制' || echo '表示')）"
+    echo ""
+
+    # ═══════════════════════════════════════════════════════════════════
     # STEP 6.6: inbox_watcher起動（全エージェント）
     # ═══════════════════════════════════════════════════════════════════
     log_info "📬 メールボックス監視を起動中..."
