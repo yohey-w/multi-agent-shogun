@@ -500,8 +500,11 @@ Phase 1 / Phase 1.5 壁打ちを開始する前に以下 6 項目を確認する
 | SC-4 | Vercel/Supabase/Stripe/Next.js 公式 docs を引用する場合、実 URL WebFetch 済みか | #52 |
 | SC-5 | 軍師判定が実機で 3 連続覆された場合、エスカレーション手順を実施したか | #53 |
 | SC-6 | 壁打ち output に 4 layer 観測テンプレを含めたか | #46 / #50 |
+| SC-7 | task scope に E2E mandatory 領域 (X-1 catalog E-1〜E-9) が含まれる場合、壁打ち output に「E2E mandatory 領域明示」を記載したか | X-1 |
+| SC-8 | Supabase auth flow を扱う場合、auth 4 categories 全件 WebFetch evidence (email signup / OAuth / magic link / phone) を壁打ち output に記載したか | X-2 (#52 拡張) |
+| SC-9 | Failure Mode Catalog (X-3 FM-1〜FM-5) を確認し、task scope に該当 FM がないかレビューしたか | X-3 |
 
-**設定値**: 上記 6 項目すべて ✅ でなければ壁打ち output を Karo に返送してはならない。  
+**設定値**: 上記 9 項目すべて ✅ でなければ壁打ち output を Karo に返送してはならない。  
 **影響範囲**: 軍師 Phase 1 / Phase 1.5 壁打ち、Phase 3 軍師 QC（QC report にも同テンプレ適用）。  
 **検証手順**: 軍師 QC 時、gunshi_report.yaml または壁打ち output に上記テーブルの存在を確認。1 項目でも ❌ の場合 FAIL。
 
@@ -617,6 +620,78 @@ curl -s <stg_url>/api/health | jq .commit_sha
 
 **影響範囲**: Phase 3 軍師 QC の完了判定 / Phase 1.5 壁打ち分析結論（実機状態の断言）。  
 **検証手順**: 三経路の確認結果を report output に明示。未実施の経路がある場合は「確認待ち」として Karo に判定を委ねること（「解決済み」と断言禁止）。
+
+---
+
+### 6. E2E Mandatory 領域 Catalog（X-1 — cmd_377 Phase 4.5 / LU #46/#52/#53 由来）
+
+**設定値**: 以下領域は静的検証（grep / tsc / build）では **不完全** または **検出不可**。Phase 1 / Phase 1.5 壁打ち output に「この task は X-1 catalog 対象領域を含む → E2E mandatory」の明示が必須。
+
+| # | E2E 必須領域 | 静的検証可否 | E2E 必須理由 |
+|---|------------|------------|------------|
+| E-1 | Supabase auth callback — OAuth (PKCE code + exchangeCodeForSession) | partial | 実機 PKCE token exchange は E2E のみ完全検証可 |
+| E-2 | Supabase auth callback — email signup (token_hash + verifyOtp) | partial | token_hash 経路は code 経路と別 handler、静的では検出困難 |
+| E-3 | Supabase auth callback — magic link (token_hash + verifyOtp) | partial | email signup と同経路、E2E 実機確認必須 |
+| E-4 | Supabase auth callback — password reset (token_hash + verifyOtp) | partial | 同上 |
+| E-5 | Cross-subdomain redirect (Portal ↔ OshiWatch) | partial (URL 整合 grep 可) | cookie format + URL query 持ち回り + route guard 整合は E2E のみ完全検証 |
+| E-6 | Dispatch 優先順位 (return_to / redirect / intent / contract) | partial (静的 grep 可) | 多経路の優先順位・実際の遷移先は E2E のみ完全検証 |
+| E-7 | Stripe / 決済 flow (checkout → webhook → subscription) | 不可 | Stripe API call + 既契約 user 409 等は E2E でのみ露呈 |
+| E-8 | Vercel pipeline 設定 (Auth / OPTIONS Allowlist / Ignored Build Step) | 部分可 (curl 可) | Vercel Dashboard 視認 + 実機 deploy が完全 gate |
+| E-9 | intent vs contract 整合 (既契約 user dispatch override) | 不可 | 契約状態 API call を含む dispatch logic は E2E のみ |
+
+**影響範囲**: auth flow / cross-subdomain redirect / dispatch / 決済を含む全 Phase 1 / Phase 1.5 壁打ち。  
+**検証手順**: 壁打ち output に「E2E mandatory 領域: E-X, E-Y … 該当」の明示、または「E2E mandatory 領域 catalog = 非該当」の明示。記載なしは FAIL。
+
+**背景 (cmd_377 Phase 4.5)**: Phase 1.5 §A.1 主推奨案 (exchangeCodeForSession) が OAuth flow には正常だが、email signup flow (token_hash + verifyOtp) を見落とした構造盲点から制定。静的検証 PASS でも E2E で NG-1 が露呈した実例 (LU #46/#53 自己実践)。
+
+---
+
+### 7. 軍師 WebFetch 範囲拡張ルール（X-2 — LU #52 拡張、cmd_377 Phase 4.5 由来）
+
+**設定値 (LU #52 拡張)**: 主要 SaaS の auth-related flow を扱う壁打ちでは、**該当 SaaS の auth 関連 doc を全 categories 網羅的に WebFetch する**。1 doc fetch で済ませない。
+
+| サービス | 既存 WebFetch 必須カテゴリ (LU #52) | X-2 拡張: 網羅必須カテゴリ |
+|---------|----------------------------------|-----------------------|
+| Supabase Auth | Auth 設定、RLS policy | **email signup / OAuth / magic link / password reset / session management 各 doc** |
+| Vercel | Allowlist path syntax、Authentication、Ignored Build Step | （既存維持） |
+| Next.js | headers() / middleware / next.config.js API | （既存維持） |
+| Stripe | Webhook 設定、API version | checkout flow / subscription / 既契約 409 handling |
+
+**Supabase auth 4 categories 詳細**（Phase 1 / Phase 1.5 壁打ちで auth flow を扱う時は全件 fetch evidence 必須）:
+
+- **email signup**: `token_hash` + `type=signup` → `verifyOtp({token_hash, type})` call
+- **OAuth**: `code` → `exchangeCodeForSession(code)` call
+- **magic link**: `token_hash` + `type=magiclink` → `verifyOtp({token_hash, type})` call（email signup と同経路）
+- **phone**: `verifyOtp({phone, token, type: 'sms'})` call（phone-specific signature）
+
+**影響範囲**: Supabase auth flow を含む全 Phase 1 / Phase 1.5 壁打ち。auth callback / signup / login flow を扱う task で必須。  
+**検証手順**: 壁打ち output に「Supabase auth doc WebFetch 実施: [OAuth URL] [email signup URL] [magic link URL] [password reset URL]」の 4 件以上の記載。記載なしで Supabase auth を断言した場合 FAIL（「推測」明示がある場合は warning 扱い）。
+
+**背景 (cmd_377 Phase 4.5)**: Phase 1.5 で Supabase PKCE flow doc（OAuth 中心）のみ WebFetch し、email signup confirmation の token_hash + verifyOtp 経路を見落とした構造盲点。LU #52「WebFetch 義務」の範囲を「公式 docs の関連 categories 全件」に拡張（LU #52 拡張）。
+
+---
+
+### 8. E2E でしか露呈しない Failure Mode Catalog（X-3 — cmd_377 Phase 4.5 由来）
+
+**設定値**: 以下の failure mode は静的検証では検出困難、E2E 実機でのみ露呈する。軍師 Phase 1 / Phase 1.5 壁打ち時の **checklist 項目**として使用する。新規 failure mode 発見時は本 catalog に追記（cmd 完了時 Phase 5 LU の義務項目）。
+
+| # | Failure Mode | 発見 cmd | 真因 | 対策 |
+|---|-------------|---------|------|------|
+| FM-1 (NG-1) | Supabase email signup callback の token_hash 経路漏れ — code only 実装の盲点 | cmd_377 Phase 4.5 | OAuth flow のみ実装（token_hash + verifyOtp 経路不在）、Phase 1.5 WebFetch 範囲不足 | AuthCallback.tsx に token_hash + verifyOtp 経路追加（code 経路と並存）、X-2 全 categories fetch |
+| FM-2 (NG-2) | 既契約 user dispatch 設計漏れ — intent そのまま信じる、contract 状態 check 不在 | cmd_377 Phase 4.5 | dispatch で intent を contract より優先、既契約 user が /subscribe → Stripe 409 | intent=subscribe + 既契約 = /portal override（contract 優先規約） |
+| FM-3 | Cross-subdomain cookie format 不整合 — chunkedCookieStorage vs simple storage | cmd_374 | 両 repo で cookie storage format を別々に実装、Portal session を OshiWatch で認識不可 | 両 repo 同期 PR（DP-006）、cookie format を明示統一 |
+| FM-4 | Vercel OPTIONS Allowlist path syntax 誤り — glob `*` 不可、prefix matching のみ | cmd_374 Phase 4 | 軍師が公式 doc fetch なしで glob `*` 可と誤回答、ash が誤実装 | X-2 WebFetch 義務 + prefix literal で記述 |
+| FM-5 | /auth route 不在 — Portal Router に /auth なし（/auth/callback のみ） | cmd_377 Phase 3 | ash5 が軍師 §A.1 主推奨案 /login から独自逸脱、/auth?intent= を使用 | feature branch + PR + 家老 merge gate（Q8 規範） + path grep 確認 mandatory |
+
+**運用ルール**:
+1. Phase 1 / Phase 1.5 壁打ち開始時に本 catalog を確認、task scope に該当 FM がないかレビュー
+2. 新規 FM 発見時は Phase 5 LU で本 catalog に追記（cmd 完了後の義務）
+3. FM-1〜FM-5 のいずれかに該当する実装を含む task には E2E mandatory 明示（X-1 catalog 連動）
+
+**影響範囲**: Phase 1 / Phase 1.5 壁打ち全件。auth flow / cross-subdomain / dispatch / Vercel pipeline を含む task で必須参照。  
+**検証手順**: 壁打ち output に「Failure Mode Catalog 確認済: [FM-X 該当/非該当]」の記載。記載なしは FAIL。
+
+**背景**: cmd_374（FM-3/FM-4）+ cmd_377（FM-1/FM-2/FM-5）で繰り返し発生した E2E のみで露呈する問題パターン。Phase 1 壁打ちで checklist として参照することで構造的再発防止（LU #46/#53 自己実践）。
 
 ---
 
