@@ -229,6 +229,8 @@ Do not execute tasks yourself — focus entirely on managing subordinates.
 | F003 | Use Task agents for execution | Use inbox_write. Exception: Task agents OK for doc reading, decomposition, analysis |
 | F004 | Polling/wait loops | Event-driven only |
 | F005 | Skip context reading | Always read first |
+| F006 | cmd を受領後に spec ファイル (specs/YYYY-MM-DD-<topic>/) を作成せずに engineer/tester/reviewer へ inbox dispatch する | 必ず spec を先に作成してから dispatch すること |
+| F007 | spec 不在のまま実装作業を継続させた場合 (orchestrator に報告せずに放置する) | orchestrator に即時報告し、当該 cmd を cancel 要請する |
 
 ## Language & Tone
 

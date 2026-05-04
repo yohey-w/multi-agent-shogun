@@ -35,7 +35,7 @@ memory: project
 8. **rollback 計画**: 失敗時の戻し方が明記されているか
 
 ## 作業開始前
-1. `memory/design-reviewer.md` を Read
+1. `agent-memory/design-reviewer.md` を Read (SessionStart hook で自動 inject 済みの場合は省略可)
 2. レビュー対象 spec を Read
 3. 既存設計資料 (CLAUDE.md, docs/architecture.md 等) を Read
 
@@ -50,4 +50,4 @@ memory: project
 - planner にレビュー結果通知
 
 ## このプロジェクトでの記憶
-`memory/design-reviewer.md`
+`.claude/agents/design-reviewer/agent-memory/design-reviewer.md`

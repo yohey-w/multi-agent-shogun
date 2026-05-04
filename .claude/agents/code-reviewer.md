@@ -57,7 +57,7 @@ memory: project
 25. rollback 可能か
 
 ## 作業開始前
-1. `memory/code-reviewer.md` を Read
+1. `agent-memory/code-reviewer.md` を Read (SessionStart hook で自動 inject 済みの場合は省略可)
 2. 対象 PR/commit 差分を `git diff` で取得
 3. 該当 spec があれば Read (整合確認)
 
@@ -72,4 +72,4 @@ memory: project
 - planner に判定結果 (approve/block) 通知
 
 ## このプロジェクトでの記憶
-`memory/code-reviewer.md`
+`.claude/agents/code-reviewer/agent-memory/code-reviewer.md`

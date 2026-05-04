@@ -1,5 +1,5 @@
 # Dashboard
-Last updated: 2026-04-30 (auto)
+Last updated: 2026-05-02 15:52 (auto)
 
 > Active tasks only. Historical v1 entries (cmd_001..cmd_080) have been pruned;
 > see git history for archaeology.
@@ -8,8 +8,8 @@ Last updated: 2026-04-30 (auto)
 
 | Item | Value |
 |------|-------|
-| Streak | 1 day (max: 3) |
-| Previous completion | 2026-04-23 (v1 cmd_096/097/099/100) |
+| Streak | 2 days (max: 3) |
+| Previous completion | 2026-05-01 (cmd_001) |
 
 ## Project Status
 
@@ -33,6 +33,8 @@ After all three streams complete, the orchestrator will commit + open a PR.
 
 ## Recently Completed
 
+- **cmd_002** (2026-05-02): tester subagent 定義作成 (.claude/agents/tester.md) + memory/ 18 file 削除 (agent-memory/ single-source-of-truth 確立) + engineer.md Specialist Subagent Dispatch Rule 追記。RACE-001 (engineer1/2 競合) を検出・解消。tester 5/5 PASS / reviewer 指摘 0 件。
+- **cmd_001** (2026-05-01): memory 配布 (28 file) + planner.md F006/F007 追加。4-stage flow (engineer1∥2∥3 → tester∥reviewer → planner) 完走。tester 4/4 PASS / reviewer 指摘 0 件。
 - **v2-spec**: 34 task spec tree under `specs/` documenting the migration (commits abf2d83 / d4ea3c3)
 - **v2 bootstrap**: planner / reviewer / engineer subagent files seeded (a505ada)
 - **MIT LICENSE + bilingual README skeleton** (d404210)

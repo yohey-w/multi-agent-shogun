@@ -23,9 +23,20 @@ if [ -z "$agent" ]; then
   agent="planner"
 fi
 
-# 2) Locate memory directory (project root assumption: cwd is repo root)
-mem_index="memory/MEMORY.md"
-mem_file="memory/${agent}.md"
+# 2) Locate memory directory based on agent type
+# Project-level agents live in .claude/agents/<agent>/agent-memory/
+# User-level agents live in ~/.claude/agents/<agent>/agent-memory/
+project_agents="planner design-reviewer code-reviewer claude-code-expert tester"
+project_dir=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+if echo "$project_agents" | grep -qw "$agent"; then
+  mem_base="${project_dir}/.claude/agents/${agent}/agent-memory"
+else
+  mem_base="${HOME}/.claude/agents/${agent}/agent-memory"
+fi
+
+mem_index="${mem_base}/MEMORY.md"
+mem_file="${mem_base}/${agent}.md"
 
 # 3) Build additionalContext (cap at ~6000 chars to avoid context bloat)
 ctx=""

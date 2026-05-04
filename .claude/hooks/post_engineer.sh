@@ -3,7 +3,7 @@
 # Called when a subagent (engineer, reviewer, etc.) finishes.
 #
 # Responsibilities:
-#   1. If memory/<agent>.md > 200 lines, emit a reminder to curate it
+#   1. If agent-memory/<agent>.md > 200 lines, emit a reminder to curate it
 #   2. Log completion of the subagent to a simple audit log
 #   3. Update dashboard.md timestamp (lightweight — no heavy processing)
 #
@@ -33,16 +33,24 @@ fi
 # 1. Memory curation reminder
 # --------------------------------------------------------------------------
 if [ -n "$agent_name" ]; then
-  mem_file="${project_dir}/memory/${agent_name}.md"
+  # Project-level agents live in .claude/agents/<agent>/agent-memory/
+  # User-level agents live in ~/.claude/agents/<agent>/agent-memory/
+  project_agents="planner design-reviewer code-reviewer claude-code-expert tester"
+  if echo "$project_agents" | grep -qw "$agent_name"; then
+    mem_file="${project_dir}/.claude/agents/${agent_name}/agent-memory/${agent_name}.md"
+  else
+    mem_file="${HOME}/.claude/agents/${agent_name}/agent-memory/${agent_name}.md"
+  fi
   if [ -f "$mem_file" ]; then
     line_count=$(wc -l < "$mem_file" 2>/dev/null || echo 0)
     if [ "$line_count" -gt 200 ]; then
+      mem_rel=".claude/agents/${agent_name}/agent-memory/${agent_name}.md"
       # Emit as additionalContext so Claude sees it after subagent completes
       cat <<EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "SubagentStop",
-    "additionalContext": "MEMORY CURATION NEEDED: memory/${agent_name}.md has ${line_count} lines (> 200 limit). Please run /memory-curate or manually trim memory/${agent_name}.md to under 200 lines."
+    "additionalContext": "MEMORY CURATION NEEDED: ${mem_rel} has ${line_count} lines (> 200 limit). Please run /memory-curate or manually trim ${mem_rel} to under 200 lines."
   }
 }
 EOF

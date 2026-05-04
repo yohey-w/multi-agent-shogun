@@ -22,19 +22,19 @@
 
 ### Subagents (`.claude/agents/`)
 
-公式仕様により **subagent → subagent dispatch は不可** (`memory/claude-code-expert.md §2 §10.1`)。dispatch は必ず main session (user の CLI) から行う。subagent の `tools:` には `Agent` を含めない。
+公式仕様により **subagent → subagent dispatch は不可** (`.claude/agents/claude-code-expert/agent-memory/claude-code-expert.md §2 §10.1`)。dispatch は必ず main session (user の CLI) から行う。subagent の `tools:` には `Agent` を含めない。
 
 Project-level (`.claude/agents/`):
 - `planner` — 要件分解 + spec 作成 + dispatch 指示書を main session に返す (実装はしない)
 - `design-reviewer` — 仕様 / アーキテクチャ / セキュリティ方針レビュー
 - `code-reviewer` — コード差分レビュー (merge 前、security 細部含む)
-- `claude-code-expert` — Anthropic Claude Code 公式仕様マスター (settings / hooks / subagents / skills / MCP / Agent Teams を熟知、`memory/claude-code-expert.md` をナレッジベースとする)
+- `claude-code-expert` — Anthropic Claude Code 公式仕様マスター (settings / hooks / subagents / skills / MCP / Agent Teams を熟知、`.claude/agents/claude-code-expert/agent-memory/claude-code-expert.md` をナレッジベースとする)
 
 User-level (`~/.claude/agents/`):
 - `frontend-engineer` / `backend-engineer` / `infrastructure-engineer` / `db-engineer` /
   `chrome-extension-engineer` / `native-app-engineer` / `game-engineer` / `ml-engineer` / `qa-engineer`
 
-各 subagent は frontmatter に `memory: project` を持ち、SessionStart hook 経由で `memory/<agent>.md` が自動 inject される (公式機構)。
+各 subagent は frontmatter に `memory: project` を持ち、SessionStart hook 経由で `agent-memory/<agent>.md` が自動 inject される (公式機構)。
 
 ### Skills (`.claude/skills/`)
 
@@ -56,7 +56,7 @@ user の頻用 op を slash command 化。`/<skill-name>` で起動可。
 
 | event | hook | 動作 |
 |-------|------|------|
-| SessionStart | `session_start_inject_memory.sh` | `memory/MEMORY.md` + `memory/<agent>.md` を context 注入 |
+| SessionStart | `session_start_inject_memory.sh` | `agent-memory/MEMORY.md` + `agent-memory/<agent>.md` を context 注入 (project agents: `.claude/agents/`, user agents: `~/.claude/agents/`) |
 | PreToolUse (Bash) | `guard_rm.sh` | `rm -rf /` 等 D001-D002 危険コマンドを block |
 | PreToolUse (Edit\|Write) | `guard_outside_project.sh` | project 外への書込を block |
 | SubagentStop | `post_engineer.sh` | memory 200 行超なら curate 催促、subagent 完了ログ |
@@ -71,7 +71,7 @@ planner: superpowers:brainstorming で対話 (必要時)
 planner: specs/<topic>/ に Haiku grade 仕様書群を作成
 planner: 各 spec の `agent:` フィールドで担当 engineer 割当
 planner: engineer の inbox に dispatch (queue/inbox/engineerN.yaml、並列可)
-engineer: SessionStart hook で memory/<role>.md を auto-load
+engineer: SessionStart hook で agent-memory/<role>.md を auto-load
         + spec ファイルを Read + .claude/rules/engineer.md を参照
 engineer: 実装 → planner の inbox に完了 report
 planner: tester + reviewer の inbox に**並列** dispatch
@@ -79,7 +79,7 @@ planner: tester + reviewer の inbox に**並列** dispatch
   reviewer: 実装 diff + design レビュー → 指摘 0 or N を planner に
 両 ✅ → planner が orchestrator に最終 report
 いずれか ✗ → planner が engineer に redispatch (失敗根拠付き)
-orchestrator: user に最終報告 + memory/<role>.md に学び追記
+orchestrator: user に最終報告 + agent-memory/<role>.md に学び追記
 ```
 
 ## 3. ディレクトリ構造
@@ -102,12 +102,8 @@ orchestrator: user に最終報告 + memory/<role>.md に学び追記
 │       └── roles/              # role 別詳細 (orchestrator / planner / engineer / tester / reviewer)
 ├── specs/                      # planner が作成する仕様書群
 │   └── YYYY-MM-DD-<topic>/
-├── memory/                     # role 別 persistent context
-│   ├── MEMORY.md               # index
-│   ├── orchestrator.md
-│   ├── planner.md
-│   ├── reviewer.md
-│   └── engineerN.md ...
+│   # memory は .claude/agents/<agent>/agent-memory/ (project agents)
+│   # および ~/.claude/agents/<agent>/agent-memory/ (user agents) に配布済み
 ├── queue/                      # inbox/outbox YAML message bus
 │   ├── inbox/<role>.yaml       # 受信箱
 │   ├── outbox/<role>.yaml      # 送信箱
@@ -126,8 +122,8 @@ orchestrator: user に最終報告 + memory/<role>.md に学び追記
 ## 4. Session Start (全 pane 共通)
 
 各 pane (orchestrator / planner / reviewer / engineerN) は起動時に SessionStart hook (`.claude/hooks/session_start_inject_memory.sh`) で:
-1. `memory/MEMORY.md` (index)
-2. `memory/<自分の role 名>.md` (自分の memory)
+1. `agent-memory/MEMORY.md` (index) — project agents は `.claude/agents/<agent>/agent-memory/`、user agents は `~/.claude/agents/<agent>/agent-memory/`
+2. `agent-memory/<自分の role 名>.md` (自分の memory)
 
 を自動 context 注入される。これに加え、各 pane は `.claude/rules/<role>.md` を初動で Read することを期待される (start_session.sh の起動順序に組み込み済み)。
 
@@ -162,7 +158,7 @@ Haiku grade = ファイル特定済 + 入出力明確 + 5-15 分実行可。
 - pane 間連携は **`queue/inbox/<role>.yaml` + `queue/outbox/<role>.yaml`** が一次経路 (旧 v1 inbox/outbox プロトコルを v2 で復活)
 - `scripts/inbox_watcher.sh` が各 inbox を監視し、対応 tmux pane にプロンプトを送る (event-driven、fswatch on macOS / inotifywait on Linux)
 - spec ファイル (`specs/<topic>/<task>.md`) が作業の真実情報源
-- memory (`memory/<role>.md`) は学習・規約だけを永続化 (進行中 state は書かない、§9 参照)
+- memory (`agent-memory/<role>.md`) は学習・規約だけを永続化 (進行中 state は書かない、§9 参照)
 - user ↔ orchestrator は通常会話 (`tmux attach-session -t orchestrator`)
 - orchestrator pane 内での短時間 subagent dispatch (Agent tool) は補助的に許可、ただし長時間タスクは必ず別 pane に inbox 経由で投げる
 
@@ -233,11 +229,11 @@ Subagent (Agent tool) として呼ばれる場合の仕様は:
 
 ## 12. 公式仕様の知識ベース
 
-Anthropic Claude Code の公式仕様 (settings.json / hooks / subagents / skills / MCP / memory / slash commands / Agent Teams) は `memory/claude-code-expert.md` に記録されている。harness 設計の判断時は **必ず** この memory を参照する (claude-code-expert subagent を召喚すれば自動 inject される)。
+Anthropic Claude Code の公式仕様 (settings.json / hooks / subagents / skills / MCP / memory / slash commands / Agent Teams) は `.claude/agents/claude-code-expert/agent-memory/claude-code-expert.md` に記録されている。harness 設計の判断時は **必ず** この memory を参照する (claude-code-expert subagent を召喚すれば自動 inject される)。
 
 主要発見:
 - subagent → subagent dispatch は **公式 NG** (3 箇所明記、`§2 §10.1`)
 - `instructions/<role>.md` は v2 自前構造で公式機構ではない → `.claude/rules/<role>.md` に migrate 済
-- `memory/<agent>.md` の手動 inject (SessionStart hook) は subagent frontmatter `memory: project` の併用で公式準拠
+- `agent-memory/<agent>.md` の手動 inject (SessionStart hook) は subagent frontmatter `memory: project` の併用で公式準拠
 - 旧 `Task` tool は v2.1.63 で **`Agent` tool に rename**
 - **Agent Teams** (experimental) がuser の tmux multi-pane の公式版 (中期で移行検討候補)

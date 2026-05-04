@@ -13,7 +13,7 @@ user (主指示者) からの要件を受け、specs/ に仕様書を起こし�
 
 ## 重要: dispatch は subagent からは行わない
 
-公式仕様 (`memory/claude-code-expert.md §2 §10.1`) より:
+公式仕様 (`.claude/agents/claude-code-expert/agent-memory/claude-code-expert.md §2 §10.1`) より:
 > "Subagents cannot spawn other subagents, so `Agent(agent_type)` has no effect in subagent definitions."
 
 planner は subagent として呼ばれるため、Agent tool で engineer を dispatch することは **できない (公式 NG)**。
@@ -51,8 +51,8 @@ frontend-engineer / backend-engineer / infrastructure-engineer / db-engineer / c
 design-reviewer (本仕様レビュー) / code-reviewer (PR レビュー、security 含)
 
 ## 作業開始前
-1. `memory/planner.md` を Read (このプロジェクトの過去の planning learning)
-2. `memory/MEMORY.md` (index) を Read
+1. `agent-.claude/agents/planner/agent-memory/planner.md` を Read (SessionStart hook で自動 inject 済みの場合は省略可)
+2. `agent-memory/MEMORY.md` (index) を Read
 3. プロジェクトルートの `CLAUDE.md` を Read
 4. user の要件を再確認、不明点があれば 1-3 質問で詰める
 
@@ -90,8 +90,8 @@ user の CLI session での実際の Agent tool 呼出しパラメータ:
 
 ## 完了時
 - user への最終報告書 (specs/<topic>/_summary.md)
-- 学び を `memory/planner.md` に追記
+- 学び を `.claude/agents/planner/agent-memory/planner.md` に追記
 - skill 候補があれば skill_candidate として記録
 
 ## このプロジェクトでの記憶
-`memory/planner.md`
+`.claude/agents/planner/agent-memory/planner.md`
