@@ -77,6 +77,18 @@ agent_is_busy_check() {
         return 1
     fi
 
+    if [[ "$cli_type" == "cursor" ]]; then
+        # Cursor: "ctrl+c to stop" appears in TUI only during active processing
+        if echo "$pane_tail" | grep -qiF 'ctrl+c to stop'; then
+            return 0  # busy
+        fi
+        # Idle markers: initial prompt or post-response prompt
+        if echo "$pane_tail" | grep -qE '(Plan, search, build anything|Add a follow-up)'; then
+            return 1  # idle
+        fi
+        return 1  # default idle
+    fi
+
     # Pane exists but capture is empty → treat as idle, not absent
     if [[ -z "$pane_tail" ]]; then
         return 1

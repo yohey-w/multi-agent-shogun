@@ -600,6 +600,22 @@ send_cli_command() {
                 return 0
             fi
             ;;
+        cursor)
+            # Cursor: /clear不存在→/new-chatで新規会話開始, /modelは対応
+            if [[ "$cmd" == "/clear" ]]; then
+                if [ "${NEW_CONTEXT_SENT:-0}" -eq 1 ]; then
+                    echo "[$(date)] [SKIP] Cursor /new-chat already sent for $AGENT_ID — skipping duplicate clear_command" >&2
+                    return 0
+                fi
+                echo "[$(date)] [SEND-KEYS] Cursor /clear→/new-chat: starting new conversation for $AGENT_ID" >&2
+                timeout 5 tmux send-keys -t "$PANE_TARGET" "/new-chat" 2>/dev/null || true
+                sleep 0.3
+                timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null || true
+                sleep 3
+                NEW_CONTEXT_SENT=1
+                return 0
+            fi
+            ;;
         # claude: commands pass through as-is
     esac
 
@@ -680,7 +696,7 @@ send_startup_prompt() {
 # Called when task_assigned is detected in unread messages.
 # Sends the appropriate "new conversation" command per CLI type to clear
 # stale context from the previous task.
-# CLI mapping: claude→/clear, codex→/new, opencode→/new, copilot→/clear, kimi→/clear
+# CLI mapping: claude→/clear, codex→/new, opencode→/new, cursor→/new-chat, copilot→/clear, kimi→/clear
 
 send_context_reset() {
     local effective_cli
@@ -699,6 +715,7 @@ send_context_reset() {
     case "$effective_cli" in
         codex)    reset_cmd="/new" ;;
         opencode) reset_cmd="/new" ;;
+        cursor)   reset_cmd="/new-chat" ;;
         claude)   reset_cmd="/clear" ;;
         copilot)  reset_cmd="/clear" ;;
         kimi)     reset_cmd="/clear" ;;
@@ -707,18 +724,20 @@ send_context_reset() {
 
     echo "[$(date)] [CONTEXT-RESET] Sending $reset_cmd before task_assigned for $AGENT_ID ($effective_cli)" >&2
 
-    # Codex/OpenCode: send /new as a single atomic operation.
+    # Codex/OpenCode/Cursor: send new-context command as a single atomic operation.
     # When called from clear_command path, NEW_CONTEXT_SENT=1 prevents reaching here.
-    # When called for standalone task_assigned, this is the only /new send.
-    if [[ "$effective_cli" == "codex" || "$effective_cli" == "opencode" ]]; then
-        # Dismiss suggestion UI (Codex only) + send /new
+    # When called for standalone task_assigned, this is the only send.
+    if [[ "$effective_cli" == "codex" || "$effective_cli" == "opencode" || "$effective_cli" == "cursor" ]]; then
+        # Dismiss suggestion UI (Codex only) + send reset command
         if [[ "$effective_cli" == "codex" ]]; then
             timeout 5 tmux send-keys -t "$PANE_TARGET" "x" 2>/dev/null || true
             sleep 0.3
         fi
-        timeout 5 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null || true
-        sleep 0.3
-        timeout 5 tmux send-keys -t "$PANE_TARGET" "/new" 2>/dev/null || true
+        if [[ "$effective_cli" != "cursor" ]]; then
+            timeout 5 tmux send-keys -t "$PANE_TARGET" C-u 2>/dev/null || true
+            sleep 0.3
+        fi
+        timeout 5 tmux send-keys -t "$PANE_TARGET" "$reset_cmd" 2>/dev/null || true
         sleep 0.3
         timeout 5 tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null || true
         sleep 3

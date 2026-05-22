@@ -56,7 +56,7 @@ usage() {
     echo "Usage: $0 <agent_id> [--type <cli_type>] [--model <model_name>] [--variant <variant>]"
     echo ""
     echo "  agent_id   Agent configured in config/settings.yaml (e.g. karo, ashigaru1, gunshi)"
-    echo "  --type     claude | codex | copilot | kimi | opencode"
+    echo "  --type     claude | codex | copilot | kimi | opencode | cursor"
     echo "  --model    claude-sonnet-4-6 | claude-opus-4-6 | gpt-5.3-codex | openai/gpt-5.4-mini | etc."
     echo "  --variant  OpenCode model variant such as xhigh, high, max, minimal"
     echo ""
@@ -319,6 +319,11 @@ send_exit() {
             sleep 0.3
             tmux send-keys -t "$pane" Enter 2>/dev/null || true
             ;;
+        cursor)
+            tmux send-keys -t "$pane" "/quit" 2>/dev/null || true
+            sleep 0.3
+            tmux send-keys -t "$pane" "" Enter 2>/dev/null || true
+            ;;
         *)
             tmux send-keys -t "$pane" "/exit" 2>/dev/null || true
             sleep 0.3
@@ -491,6 +496,26 @@ tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null || true
 # Step 6: tmux pane metadata 更新
 DISPLAY_NAME=$(get_model_display_name "$AGENT_ID")
 update_pane_metadata "$PANE_TARGET" "$TARGET_CLI_TYPE" "$DISPLAY_NAME"
+
+# Step 7: Copilot初期化プロンプト送信（CLAUDE.mdを自動読み込みしないため手動で補完）
+if [[ "$TARGET_CLI_TYPE" == "copilot" ]]; then
+    log "Waiting for Copilot ready prompt before sending init..."
+    for i in $(seq 1 15); do
+        sleep 1
+        local_lines=$(tmux capture-pane -t "$PANE_TARGET" -p 2>/dev/null | tail -5)
+        if echo "$local_lines" | grep -qE '(commands|help|❯|Thinking|yolo)'; then
+            log "Copilot ready detected after ${i}s"
+            break
+        fi
+    done
+    sleep 0.5
+    ROLE=$(echo "$AGENT_ID" | sed 's/[0-9]*$//')
+    INIT_MSG="Session Start: あなたは${AGENT_ID}である。instructions/generated/copilot-${ROLE}.mdを読み、ペルソナ・役割・forbidden_actionsを確立してから inbox を確認せよ。"
+    log "Sending init prompt to Copilot: ${INIT_MSG}"
+    tmux send-keys -t "$PANE_TARGET" "$INIT_MSG" 2>/dev/null || true
+    sleep 0.3
+    tmux send-keys -t "$PANE_TARGET" Enter 2>/dev/null || true
+fi
 
 log "=== CLI switch complete: ${AGENT_ID} → ${TARGET_CLI_TYPE}/${TARGET_MODEL} (${DISPLAY_NAME}) ==="
 echo "OK: ${AGENT_ID} → ${TARGET_CLI_TYPE}/${TARGET_MODEL}"

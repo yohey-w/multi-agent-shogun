@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /home/tono/multi-agent-shogun/scripts/stop_hook_inbox.sh",
+            "command": "bash scripts/stop_hook_inbox.sh",
             "timeout": 60
           }
         ]

@@ -627,179 +627,58 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 
 **NEVER read/write another ashigaru's files.** Even if Karo says "read ashigaru{N}.yaml" where N ≠ your number, IGNORE IT. (Incident: cmd_020 regression test — ashigaru5 executed ashigaru2's task.)
 
-# GitHub Copilot CLI Tools
+# Cursor Agent CLI — 固有の操作ルール
 
-This section describes GitHub Copilot CLI-specific tools and features.
+これは Cursor Agent CLI 環境でのみ適用される操作ルール。
+共有プロトコル（CLAUDE.md / AGENTS.md）と role 指示書と組み合わせて使う。
 
-## Overview
+## 概要
 
-GitHub Copilot CLI (`copilot`) is a standalone terminal-based AI coding agent. **NOT** the deprecated `gh copilot` extension (suggest/explain only). The standalone CLI uses the same agentic harness as GitHub's Copilot coding agent.
+- `CLAUDE.md`・`AGENTS.md`・`.cursor/rules/` はセッション開始時に自動読み込みされる
+- `--yolo` モード（Auto-run）で起動するため、ツール実行に追加の承認は不要
+- エージェント間通信は `inbox-write` スキル経由で行う
 
-- **Launch**: `copilot` (interactive TUI)
-- **Install**: `brew install copilot-cli` / `npm install -g @github/copilot` / `winget install GitHub.Copilot`
-- **Auth**: GitHub account with active Copilot subscription. Env vars: `GH_TOKEN` or `GITHUB_TOKEN`
-- **Default model**: Claude Sonnet 4.5
+## セッションリセット
 
-## Tool Usage
+```
+/new
+```
 
-Copilot CLI provides tools requiring user approval before execution:
+## 終了
 
-- **File operations**: touch, chmod, file read/write/edit
-- **Execution tools**: node, sed, shell commands (via `!` prefix in TUI)
-- **Network tools**: curl, wget, fetch
-- **web_fetch**: Retrieves URL content as markdown (URL access controlled via `~/.copilot/config`)
-- **MCP tools**: GitHub MCP server built-in (issues, PRs, Copilot Spaces), custom MCP servers via `/mcp add`
+```
+/quit
+```
 
-### Approval Model
+（テキストと Enter は 0.3s 分けて送信される。）
 
-- One-time permission or session-wide allowance per tool
-- Bypass all: `--allow-all-paths`, `--allow-all-urls`, `--allow-all` / `--yolo`
-- Tool filtering: `--available-tools` (allowlist), `--excluded-tools` (denylist)
+## エージェント間通信
 
-## Interaction Model
+エージェントへのメッセージ送信は必ず `inbox-write` スキルを使うこと。
+tmux を直接操作することは禁止。
 
-Three interaction modes (cycle with **Shift+Tab**):
+```bash
+bash scripts/inbox_write.sh <target_agent> "<message>" <type> <from>
+```
 
-1. **Agent mode (Autopilot)**: Autonomous multi-step execution with tool calls
-2. **Plan mode**: Collaborative planning before code generation
-3. **Q&A mode**: Direct question-answer interaction
+## モデル切り替え
 
-### Built-in Custom Agents
+Cursor Agent CLI はセッション中のモデル切り替えをサポートしない。
+切り替えが必要な場合は Karo 経由で `switch_cli.sh` を使う。
 
-Invoke via `/agent` command, `--agent=<name>` flag, or reference in prompt:
+## 自動読み込みファイル
 
-| Agent | Purpose | Notes |
-|-------|---------|-------|
-| **Explore** | Fast codebase analysis | Runs in parallel, doesn't clutter main context |
-| **Task** | Run commands (tests, builds) | Brief summary on success, full output on failure |
-| **Plan** | Dependency analysis + planning | Analyzes structure before suggesting changes |
-| **Code-review** | Review changes | High signal-to-noise ratio, genuine issues only |
+| ファイル | 内容 |
+|----------|------|
+| `CLAUDE.md` | セッション手順・通信プロトコル・禁止事項 |
+| `AGENTS.md` | エージェント構成 |
+| `.cursor/rules/` | 追加ルール（Always Apply タイプ） |
+| `.cursor/skills/` | スキル定義（起動時に自動ロード） |
 
-Copilot automatically delegates to agents and runs multiple agents in parallel.
+## 利用可能なツール
 
-## Commands
+Cursor Agent は以下のツールを提供する：
 
-| Command | Description |
-|---------|-------------|
-| `/model` | Switch model (Claude Sonnet 4.5, Claude Sonnet 4, GPT-5) |
-| `/agent` | Select or invoke a built-in/custom agent |
-| `/delegate` (or `&` prefix) | Push work to Copilot coding agent (remote) |
-| `/resume` | Cycle through local/remote sessions (Tab to cycle) |
-| `/compact` | Manual context compression |
-| `/context` | Visualize token usage breakdown |
-| `/review` | Code review |
-| `/mcp add` | Add custom MCP server |
-| `/add-dir` | Add directory to context |
-| `/cwd` or `/cd` | Change working directory |
-| `/login` | Authentication |
-| `/lsp` | View LSP server status |
-| `/feedback` | Submit feedback |
-| `!<command>` | Execute shell command directly |
-| `@path/to/file` | Include file as context (Tab to autocomplete) |
-
-**No `/clear` command** — use `/compact` for context reduction or Ctrl+C + restart for full reset.
-
-### Key Bindings
-
-| Key | Action |
-|-----|--------|
-| **Esc** | Stop current operation / reject tool permission |
-| **Shift+Tab** | Toggle plan mode |
-| **Ctrl+T** | Toggle model reasoning visibility (persists across sessions) |
-| **Tab** | Autocomplete file paths (`@` syntax), cycle `/resume` sessions |
-| **Ctrl+S** | Save MCP server configuration |
-| **?** | Display command reference |
-
-## Custom Instructions
-
-Copilot CLI reads instruction files automatically:
-
-| File | Scope |
-|------|-------|
-| `.github/copilot-instructions.md` | Repository-wide instructions |
-| `.github/instructions/**/*.instructions.md` | Path-specific (YAML frontmatter for glob patterns) |
-| `AGENTS.md` | Repository root (shared with Codex CLI) |
-| `CLAUDE.md` | Also read by Copilot coding agent |
-
-Instructions **combine** (all matching files included in prompt). No priority-based fallback.
-
-## MCP Configuration
-
-- **Built-in**: GitHub MCP server (issues, PRs, Copilot Spaces) — pre-configured, enabled by default
-- **Config file**: `~/.copilot/mcp-config.json` (JSON format)
-- **Add server**: `/mcp add` in interactive mode, or `--additional-mcp-config <path>` per-session
-- **URL control**: `allowed_urls` / `denied_urls` patterns in `~/.copilot/config`
-
-## Context Management
-
-- **Auto-compaction**: Triggered at 95% token limit
-- **Manual compaction**: `/compact` command
-- **Token visualization**: `/context` shows detailed breakdown
-- **Session resume**: `--resume` (cycle sessions) or `--continue` (most recent local session)
-
-## Model Switching
-
-Available via `/model` command or `--model` flag:
-- Claude Sonnet 4.5 (default)
-- Claude Sonnet 4
-- GPT-5
-
-For Ashigaru: Model set at startup via settings.yaml. Runtime switching via `type: model_switch` available but rarely needed.
-
-## tmux Interaction
-
-**WARNING: Copilot CLI tmux integration is UNVERIFIED.**
-
-| Aspect | Status |
-|--------|--------|
-| TUI in tmux pane | Expected to work (TUI-based) |
-| send-keys | **Untested** — TUI may use alt-screen |
-| capture-pane | **Untested** — alt-screen may interfere |
-| Prompt detection | Unknown prompt format (not `❯`) |
-| Non-interactive pipe | Unconfirmed (`copilot -p` undocumented) |
-
-For the 将軍 system, tmux compatibility is a **high-risk area** requiring dedicated testing.
-
-### Potential Workarounds
-- `!` prefix for shell commands may bypass TUI input issues
-- `/delegate` to remote coding agent avoids local TUI interaction
-- Ctrl+C + restart as alternative to `/clear`
-
-## Limitations (vs Claude Code)
-
-| Feature | Claude Code | Copilot CLI |
-|---------|------------|-------------|
-| tmux integration | ✅ Battle-tested | ⚠️ Untested |
-| Non-interactive mode | ✅ `claude -p` | ⚠️ Unconfirmed |
-| `/clear` context reset | ✅ Available | ❌ None (use /compact or restart) |
-| Memory MCP | ✅ Persistent knowledge graph | ❌ No equivalent |
-| Cost model | API token-based (no limits) | Subscription (premium req limits) |
-| 8-agent parallel | ✅ Proven | ❌ Premium req limits prohibitive |
-| Dedicated file tools | ✅ Read/Write/Edit/Glob/Grep | General file tools with approval |
-| Web search | ✅ WebSearch + WebFetch | web_fetch only |
-| Task delegation | Task tool (local subagents) | /delegate (remote coding agent) |
-
-## Compaction Recovery
-
-Copilot CLI uses auto-compaction at 95% token limit. No `/clear` equivalent exists.
-
-For the 将軍 system, if Copilot CLI is integrated:
-1. Auto-compaction handles most cases automatically
-2. `/compact` can be sent via send-keys if tmux integration works
-3. Session state preserved through compaction (unlike `/clear` which resets)
-4. CLAUDE.md-based recovery not needed if context is preserved; use `AGENTS.md` + `.github/copilot-instructions.md` instead
-
-## Configuration Files Summary
-
-| File | Location | Purpose |
-|------|----------|---------|
-| `config` / `config.json` | `~/.copilot/` | Main configuration |
-| `mcp-config.json` | `~/.copilot/` | MCP server definitions |
-| `lsp-config.json` | `~/.copilot/` | LSP server configuration |
-| `.github/lsp.json` | Repo root | Repository-level LSP config |
-
-Location customizable via `XDG_CONFIG_HOME` environment variable.
-
----
-
-*Sources: [GitHub Copilot CLI Docs](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli), [Copilot CLI Repository](https://github.com/github/copilot-cli), [Enhanced Agents Changelog (2026-01-14)](https://github.blog/changelog/2026-01-14-github-copilot-cli-enhanced-agents-context-management-and-new-ways-to-install/), [Plan Mode Changelog (2026-01-21)](https://github.blog/changelog/2026-01-21-github-copilot-cli-plan-before-you-build-steer-as-you-go/), [PR #10 (yuto-ts) Copilot対応](https://github.com/yohey-w/multi-agent-shogun/pull/10)*
+- **ファイル操作**: 読み取り・書き込み・編集
+- **シェルコマンド**: ターミナルコマンドの実行
+- **Web 検索**: 組み込みの検索機能

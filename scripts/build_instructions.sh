@@ -104,6 +104,9 @@ EOFYAML
         opencode)
             cat "$PARTS_DIR/cli_specific/opencode_tools.md" >> "$output_path"
             ;;
+        cursor)
+            cat "$PARTS_DIR/cli_specific/cursor_tools.md" >> "$output_path"
+            ;;
     esac
 
     if [[ "$cli_type" == "opencode" ]]; then
@@ -142,6 +145,12 @@ build_instruction_file "opencode" "shogun" "opencode-shogun.md"
 build_instruction_file "opencode" "karo" "opencode-karo.md"
 build_instruction_file "opencode" "ashigaru" "opencode-ashigaru.md"
 build_instruction_file "opencode" "gunshi" "opencode-gunshi.md"
+
+# Build Cursor Agent instruction files
+build_instruction_file "cursor" "shogun" "cursor-shogun.md"
+build_instruction_file "cursor" "karo" "cursor-karo.md"
+build_instruction_file "cursor" "ashigaru" "cursor-ashigaru.md"
+build_instruction_file "cursor" "gunshi" "cursor-gunshi.md"
 
 # ============================================================
 # AGENTS.md generation (Codex auto-load file)

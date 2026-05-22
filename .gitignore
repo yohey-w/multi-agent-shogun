@@ -39,6 +39,7 @@
 !instructions/cli_specific/copilot_tools.md
 !instructions/cli_specific/kimi_tools.md
 !instructions/cli_specific/opencode_tools.md
+!instructions/cli_specific/cursor_tools.md
 
 # Multi-CLI: Build template parts (roles, common sections)
 !instructions/roles/
@@ -67,6 +68,11 @@
 # Multi-CLI: OpenCode custom tools
 !.opencode/tools/
 !.opencode/tools/mark-as-read.ts
+
+# Multi-CLI: Cursor Agent skills
+!.cursor/skills/
+!.cursor/skills/inbox-write/
+!.cursor/skills/inbox-write/SKILL.md
 
 # Setup and deployment scripts
 !shutsujin_departure.sh

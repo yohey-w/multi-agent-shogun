@@ -3,7 +3,7 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "opencode"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "opencode" | "cursor"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
@@ -17,7 +17,7 @@ CLI_ADAPTER_PROJECT_ROOT="$(cd "${CLI_ADAPTER_DIR}/.." && pwd)"
 CLI_ADAPTER_SETTINGS="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi opencode"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi opencode cursor"
 
 # normalize_opencode_model(model)
 # OpenCode向けにprovider-qualifiedなモデル名へ正規化する。
@@ -107,6 +107,32 @@ _cli_adapter_shell_quote() {
     printf '%q\n' "$value"
 }
 
+# _cli_adapter_get_agent_env_prefix agent_id
+# settings.yaml の cli.agents.{id}.env から KEY=VALUE 文字列を返す
+# 例: "OPENAI_BASE_URL=http://... OPENAI_API_KEY=sk-xxx "
+_cli_adapter_get_agent_env_prefix() {
+    local agent_id="$1"
+    local result
+    result=$("$CLI_ADAPTER_PROJECT_ROOT/.venv/bin/python3" -c "
+import yaml, shlex, sys
+try:
+    with open('${CLI_ADAPTER_SETTINGS}') as f:
+        cfg = yaml.safe_load(f) or {}
+    env = cfg.get('cli', {}).get('agents', {}).get('${agent_id}', {})
+    if not isinstance(env, dict):
+        sys.exit(0)
+    env = env.get('env', {})
+    if not isinstance(env, dict):
+        sys.exit(0)
+    parts = [shlex.quote(f'{k}={v}') for k, v in env.items()]
+    if parts:
+        print(' '.join(parts) + ' ')
+except Exception:
+    pass
+" 2>/dev/null)
+    echo "${result:-}"
+}
+
 # _cli_adapter_is_valid_cli cli_type
 # 許可されたCLI種別かチェック
 _cli_adapter_is_valid_cli() {
@@ -141,18 +167,18 @@ try:
         print('claude'); sys.exit(0)
     agents = cli.get('agents', {})
     if not isinstance(agents, dict):
-        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','opencode') else 'claude')
+        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','opencode','cursor') else 'claude')
         sys.exit(0)
     agent_cfg = agents.get('${agent_id}')
     if isinstance(agent_cfg, dict):
         t = agent_cfg.get('type', '')
-        if t in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+        if t in ('claude', 'codex', 'copilot', 'kimi', 'opencode', 'cursor'):
             print(t); sys.exit(0)
     elif isinstance(agent_cfg, str):
-        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'opencode', 'cursor'):
             print(agent_cfg); sys.exit(0)
     default = cli.get('default', 'claude')
-    if default in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+    if default in ('claude', 'codex', 'copilot', 'kimi', 'opencode', 'cursor'):
         print(default)
     else:
         print('claude', file=sys.stderr)
@@ -216,6 +242,7 @@ build_cli_command() {
             local tui_config_path
             local variant
             local launch_agent_id
+            local agent_env_prefix
             normalized_model=$(normalize_opencode_model "$model")
             tui_config_path=$(_cli_adapter_shell_quote "$CLI_ADAPTER_PROJECT_ROOT/config/opencode-tui.json")
             variant=$(_cli_adapter_read_yaml "cli.agents.${agent_id}.variant" "")
@@ -223,6 +250,7 @@ build_cli_command() {
             if [[ -n "$variant" ]]; then
                 launch_agent_id="${agent_id}-runtime"
             fi
+            agent_env_prefix=$(_cli_adapter_get_agent_env_prefix "$agent_id")
             local quoted_agent_id
             quoted_agent_id=$(_cli_adapter_shell_quote "$agent_id")
             cmd="opencode"
@@ -237,13 +265,24 @@ build_cli_command() {
             cmd="$cmd --agent $launch_agent_id"
             # Use a project-pinned TUI config so tmux automation sees stable keybinds
             # even when the user has a different global tui.json.
-            cmd="OPENCODE_AGENT_ID=$quoted_agent_id OPENCODE_TUI_CONFIG=$tui_config_path $cmd"
+            cmd="${agent_env_prefix}OPENCODE_AGENT_ID=$quoted_agent_id OPENCODE_TUI_CONFIG=$tui_config_path $cmd"
             ;;
         copilot)
             cmd="copilot --yolo"
+            if [[ -n "$model" ]]; then
+                cmd="$cmd --model $model"
+            fi
             ;;
         kimi)
             cmd="kimi --yolo"
+            if [[ -n "$model" ]]; then
+                cmd="$cmd --model $model"
+            fi
+            ;;
+        cursor)
+            local bin="agent"
+            command -v cursor-agent &>/dev/null && bin="cursor-agent"
+            cmd="$bin --yolo"
             if [[ -n "$model" ]]; then
                 cmd="$cmd --model $model"
             fi
@@ -286,6 +325,7 @@ get_instruction_file() {
         copilot) echo ".github/copilot-instructions-${role}.md" ;;
         kimi)    echo "instructions/generated/kimi-${role}.md" ;;
         opencode) echo "instructions/generated/opencode-${role}.md" ;;
+        cursor)  echo "instructions/generated/cursor-${role}.md" ;;
         *)       echo "instructions/${role}.md" ;;
     esac
 }
@@ -323,6 +363,12 @@ validate_cli_availability() {
         kimi)
             if ! command -v kimi-cli &>/dev/null && ! command -v kimi &>/dev/null; then
                 echo "[ERROR] Kimi CLI not found. Install from https://platform.moonshot.cn/" >&2
+                return 1
+            fi
+            ;;
+        cursor)
+            if ! command -v agent &>/dev/null && ! command -v cursor-agent &>/dev/null; then
+                echo "[ERROR] Cursor Agent CLI not found. Install: curl https://cursor.com/install -fsS | bash (Linux/WSL2) / brew install cursor-agent (macOS)" >&2
                 return 1
             fi
             ;;
@@ -370,8 +416,19 @@ get_agent_model() {
                 *)              echo "k2.5" ;;
             esac
             ;;
+        cursor)
+            # Cursor Agent CLI用デフォルトモデル（モデル名はパススルー）
+            case "$agent_id" in
+                shogun|gunshi)  echo "claude-sonnet-4-6" ;;
+                *)              echo "claude-sonnet-4-6" ;;
+            esac
+            ;;
+        copilot)
+            # Copilot CLI: モデル未指定でauto選択（rate limit対策）
+            echo ""
+            ;;
         *)
-            # Claude Code/Codex/Copilot用デフォルトモデル
+            # Claude Code/Codex用デフォルトモデル
             case "$agent_id" in
                 shogun)         echo "opus" ;;
                 karo)           echo "sonnet" ;;
@@ -402,6 +459,11 @@ get_model_display_name() {
         else
             echo "OpenCode (${model})"
         fi
+        return 0
+    fi
+
+    if [[ "$cli_type" == "cursor" ]]; then
+        echo "Cursor (${model})"
         return 0
     fi
 
@@ -826,6 +888,7 @@ can_model_switch() {
         codex)   echo "limited" ;;
         copilot) echo "none" ;;
         kimi)    echo "none" ;;
+        cursor)  echo "full" ;;
         *)       echo "none" ;;
     esac
 }
