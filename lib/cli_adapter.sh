@@ -423,12 +423,8 @@ get_agent_model() {
                 *)              echo "claude-sonnet-4-6" ;;
             esac
             ;;
-        copilot)
-            # Copilot CLI: モデル未指定でauto選択（rate limit対策）
-            echo ""
-            ;;
         *)
-            # Claude Code/Codex用デフォルトモデル
+            # Claude Code/Codex/Copilot用デフォルトモデル
             case "$agent_id" in
                 shogun)         echo "opus" ;;
                 karo)           echo "sonnet" ;;
