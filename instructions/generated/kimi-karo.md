@@ -264,6 +264,43 @@ When writing task YAMLs or making resource decisions:
 
 One rule: **measure, don't assume.**
 
+## TVF Protocol — 家老指示テンプレ (Figma準拠タスク必須)
+
+Lord の前提主張と Figma 実態の乖離による誤実装を未然に防ぐため、Figma準拠タスクを足軽に振る際は
+task YAML に以下 4 ブロックを **必須記載** する。
+（軍師 cmd_510 v2 監査結論の制度化。CLAUDE.md「TVF Protocol」節を併読のこと）
+
+```yaml
+tvf_protocol:
+  step_1_fresh_fetch:
+    requirement: "Figma MCP の get_design_context を本タスク開始時に必須実行"
+    rationale: "24 時間以上前のキャッシュ証跡は不可。本タスク内で fresh fetch すること"
+  step_2_component_inventory:
+    requirement: "取得した node のコンポーネント種別 (Toggle/Switch/Radio/Checkbox 等) を一覧化してから実装開始"
+    output: "report の component_inventory フィールドに列挙"
+  step_3_assumption_verification:
+    requirement: "殿の前提主張が Figma 実態と異なる場合は実装前に家老→殿へ確認"
+    halt_on_gap: true   # 乖離検知時は実装を保留し inbox_write で家老へ即報告
+  step_4_implementation_mapping:
+    requirement: "Figma↔実装の 1:1 対応表を PR 本文に必須記載"
+    format: "| FigmaノードID | コンポーネント種別 | 実装ファイル | 実装コンポーネント |"
+```
+
+### 禁則
+
+- 上記 4 ブロック未記載で Figma準拠タスクを振ってはならぬ。発覚時は当該タスクを redo 発令。
+- 「殿が toggle と仰せだから toggle 実装」のような家老の前提丸呑みは禁止。Figma 実態を足軽に確認させる。
+- Fresh fetch 証跡（24h 以内）を report で確認できぬ場合、当該タスクは「未完了」扱い。
+
+### 適用範囲
+
+- Figma URL を含むタスク（cmd_502/503/509/510 系統）
+- 「Figma準拠」を acceptance_criteria に掲げるタスク
+- UI コンポーネント種別の判断を要するタスク
+
+非 Figma タスクでも、Lord の事実主張に基づく実装を求めるなら本テンプレに準拠した
+「前提検証ブロック」を別途設けることが推奨される。
+
 ## Autonomous Judgment (Act Without Being Told)
 
 ### Post-Modification Regression

@@ -226,6 +226,40 @@ System manages ALL white-collar work, not just self-improvement. Project folders
 3. **E2Eテストは家老が担当**: 全エージェント操作権限を持つ家老がE2Eを実行。足軽はユニットテストのみ。
 4. **テスト計画レビュー**: 家老はテスト計画を事前レビューし、前提条件の実現可能性を確認してから実行に移す。
 
+# TVF Protocol — Task Verification First (all agents)
+
+**事実検証ファースト**プロトコル。Lord の前提主張と外部実態（Figma / 仕様書 / 外部API 等）の乖離による
+誤実装を未然に防ぐ仕組み。軍師 cmd_510 v2 監査の制度化として全エージェントに義務化する。
+
+## 4層構造
+
+| 層 | 役割 | 担当 | 詳細 |
+|----|------|------|------|
+| A | 指示テンプレ4ブロック必須化 | Karo | `instructions/roles/karo_role.md` → TVF Protocol 節 |
+| B | self-check（実装前の事実確認） | Ashigaru | `instructions/roles/ashigaru_role.md` → TVF 節 |
+| C | report テンプレに purpose_gap 必須化 | Ashigaru → Gunshi → Karo | 下記参照 |
+| D | サブエージェント種別整合性チェック | Ashigaru | `instructions/roles/ashigaru_role.md` → TVF 節 |
+
+## C: purpose_gap 必須フィールド
+
+完了報告 YAML には次のフィールドを必須記載する（Figma準拠以外のタスクも対象）。
+
+```yaml
+purpose_gap:
+  detected: false             # MANDATORY — true | false
+  description: ""             # 殿/家老の前提と実態に乖離があった場合の詳細。なければ空
+  action_taken: "該当なし"     # "報告して保留" | "殿確認後修正" | "該当なし"
+```
+
+`detected: true` の場合、Ashigaru は即座に家老へ inbox_write し、実装を保留せよ。
+無申告で実装した場合は F005 違反扱いとする。
+
+## skill 連携
+
+- 🥇 `figma-fresh-fetch-guard` — Pre-PR hook (48h 以内取得証跡必須化) **High推奨**
+- 🥈 `figma-component-type-checker` — Figma 種別と実装 UI の差分自動検知 **Med-High**
+- 🥉 `lord-assumption-verifier` — Lord 指示の事実主張を自動検証 **High推奨へ昇格**（軍師 cmd_510 v2）
+
 # Batch Processing Protocol (all agents)
 
 When processing large datasets (30+ items requiring individual web search, API calls, or LLM generation), follow this protocol. Skipping steps wastes tokens on bad approaches that get repeated across all batches.
