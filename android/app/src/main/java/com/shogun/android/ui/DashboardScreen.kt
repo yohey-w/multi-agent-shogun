@@ -1,15 +1,16 @@
 package com.shogun.android.ui
 
+import android.app.Application
 import android.webkit.WebView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.graphics.Color
 import com.shogun.android.ui.theme.*
-import com.shogun.android.util.Defaults
-import com.shogun.android.util.PrefsKeys
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material3.*
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,15 +21,16 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shogun.android.R
 import com.shogun.android.viewmodel.DashboardViewModel
+import com.shogun.android.viewmodel.DashboardViewModelFactory
 import org.commonmark.ext.gfm.tables.TablesExtension
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 
 @Composable
-fun DashboardScreen(
-    viewModel: DashboardViewModel = viewModel()
-) {
-    val context = LocalContext.current
+fun DashboardScreen(profileId: String? = null) {
+    val application = LocalContext.current.applicationContext as Application
+    val viewModel: DashboardViewModel = viewModel(factory = DashboardViewModelFactory(application))
+
     val markdownContent by viewModel.markdownContent.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -37,72 +39,77 @@ fun DashboardScreen(
         if (markdownContent.isBlank()) "" else markdownToHtml(markdownContent)
     }
 
-    LaunchedEffect(Unit) {
-        val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, android.content.Context.MODE_PRIVATE)
-        val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
-        val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT
-        val user = prefs.getString(PrefsKeys.SSH_USER, "") ?: ""
-        val keyPath = prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: ""
-        val password = prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: ""
-        viewModel.connect(host, port, user, keyPath, password)
+    LaunchedEffect(profileId) {
+        viewModel.connect()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Shikkoku)
+    var isAtTop by remember { mutableStateOf(true) }
+
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(isLoading),
+        onRefresh = { viewModel.loadDashboard() },
+        swipeEnabled = isAtTop
     ) {
-        Image(
-            painter = painterResource(R.drawable.bg_castle),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alpha = 0.55f,
-            modifier = Modifier.fillMaxSize()
-        )
-        if (errorMessage != null) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "エラー: $errorMessage",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        } else if (markdownContent.isBlank() && !isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("読み込み中…", color = Zouge)
-            }
-        } else {
-            AndroidView(
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        settings.javaScriptEnabled = false
-                        settings.allowContentAccess = true
-                        settings.allowFileAccess = true
-                        settings.domStorageEnabled = true
-                        settings.setSupportMultipleWindows(true)
-                        isFocusable = true
-                        isFocusableInTouchMode = true
-                        isLongClickable = true
-                        setOnLongClickListener { false }
-                        setOnTouchListener { _, _ -> false }
-                    }
-                },
-                update = { webView ->
-                    if (htmlContent.isNotBlank()) {
-                        val fullHtml = buildDashboardHtml(htmlContent)
-                        webView.loadDataWithBaseURL(null, fullHtml, "text/html", "UTF-8", null)
-                    }
-                },
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Shikkoku)
+        ) {
+            Image(
+                painter = painterResource(R.drawable.bg_castle),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = 0.55f,
                 modifier = Modifier.fillMaxSize()
             )
+            if (errorMessage != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "エラー: $errorMessage",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else if (markdownContent.isBlank() && !isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("読み込み中…", color = Zouge)
+                }
+            } else {
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            settings.javaScriptEnabled = false
+                            settings.allowContentAccess = true
+                            settings.allowFileAccess = true
+                            settings.domStorageEnabled = true
+                            settings.setSupportMultipleWindows(true)
+                            isFocusable = true
+                            isFocusableInTouchMode = true
+                            isLongClickable = true
+                            setOnLongClickListener { false }
+                            setOnTouchListener { _, _ -> false }
+                            setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                                isAtTop = scrollY == 0
+                            }
+                        }
+                    },
+                    update = { webView ->
+                        if (htmlContent.isNotBlank()) {
+                            val fullHtml = buildDashboardHtml(htmlContent)
+                            webView.loadDataWithBaseURL(null, fullHtml, "text/html", "UTF-8", null)
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
-    } // Box
+    }
 }
 
 private fun markdownToHtml(markdown: String): String {

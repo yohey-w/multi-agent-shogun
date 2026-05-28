@@ -11,6 +11,8 @@ object PrefsKeys {
     const val PROJECT_PATH = "project_path"
     const val SHOGUN_SESSION = "shogun_session"
     const val AGENTS_SESSION = "agents_session"
+    const val PROFILES_JSON = "profiles_json"
+    const val ACTIVE_PROFILE_ID = "active_profile_id"
     const val NOTIFICATION_ENABLED = "notification_enabled"
     const val NTFY_TOPIC = "ntfy_topic"
     const val NOTIFY_CMD_COMPLETE = "notify_cmd_complete"

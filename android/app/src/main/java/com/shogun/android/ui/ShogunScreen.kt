@@ -54,6 +54,7 @@ import com.shogun.android.viewmodel.ShogunViewModel
 
 @Composable
 fun ShogunScreen(
+    profileId: String? = null,
     viewModel: ShogunViewModel = viewModel(),
     mediaPlayer: MediaPlayer? = null,
     isBgmPlaying: Boolean = false,
@@ -99,8 +100,8 @@ fun ShogunScreen(
         }
     }
 
-    // Auto-connect on composition
-    LaunchedEffect(Unit) {
+    // Auto-connect on composition and profile switch
+    LaunchedEffect(profileId) {
         val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, android.content.Context.MODE_PRIVATE)
         val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
         val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT

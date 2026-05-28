@@ -36,7 +36,7 @@ class ShogunViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun tmuxTarget(): String {
         val session = prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION
-        return "$session:main"
+        return "$session:0"
     }
 
     fun pauseRefresh() { paused = true }

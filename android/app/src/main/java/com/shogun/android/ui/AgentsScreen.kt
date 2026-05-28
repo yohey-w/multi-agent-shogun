@@ -158,6 +158,7 @@ private fun formatResetTime(resetStr: String): String {
 
 @Composable
 fun AgentsScreen(
+    profileId: String? = null,
     viewModel: AgentsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -172,7 +173,7 @@ fun AgentsScreen(
     // Derive selected pane from live data so it auto-updates
     val selectedPane = selectedPaneIndex?.let { idx -> panes.find { it.index == idx } }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(profileId) {
         val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, android.content.Context.MODE_PRIVATE)
         val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
         val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT
