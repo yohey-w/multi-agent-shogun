@@ -112,6 +112,7 @@
 !scripts/ratelimit_check.sh
 !scripts/switch_cli.sh
 !scripts/dashboard-viewer.py
+!scripts/mcp_health_check.sh
 
 
 # SayTask (sample template only, not actual data)
