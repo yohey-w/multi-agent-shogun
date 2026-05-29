@@ -27,8 +27,13 @@ if [ "$FROM" = "$TARGET" ]; then
 fi
 
 # Initialize inbox if not exists
+# dangling symlink recovery: queue/inbox が壊れたシンボリックリンクならリンク先を再生成
+_inbox_parent="$(dirname "$INBOX")"
+if [ -L "$_inbox_parent" ] && [ ! -d "$_inbox_parent" ]; then
+    mkdir -p "$(readlink "$_inbox_parent")"
+fi
 if [ ! -f "$INBOX" ]; then
-    mkdir -p "$(dirname "$INBOX")"
+    mkdir -p "$_inbox_parent"
     echo "messages: []" > "$INBOX"
 fi
 
