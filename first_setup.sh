@@ -774,12 +774,21 @@ SCRIPTS=(
     "first_setup.sh"
 )
 
+TARGETS=()
+
 for script in "${SCRIPTS[@]}"; do
     if [ -f "$SCRIPT_DIR/$script" ]; then
-        chmod +x "$SCRIPT_DIR/$script"
-        log_info "$script に実行権限を付与しました"
+        TARGETS+=("$SCRIPT_DIR/$script")
     fi
 done
+
+if [ "${#TARGETS[@]}" -ne 0 ]; then
+    sudo chmod +x "${TARGETS[@]}"
+
+    for target in "${TARGETS[@]}"; do
+        log_info "$(basename "$target") に実行権限を付与しました"
+    done
+fi
 
 RESULTS+=("実行権限: OK")
 
