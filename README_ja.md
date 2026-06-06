@@ -451,6 +451,7 @@ wsl --install
 |-----------|------|---------------|
 | `install.bat` | Windows: WSL2 + Ubuntu のセットアップ | 初回のみ |
 | `first_setup.sh` | tmux、Node.js、Claude Code CLI のインストール + Memory MCP設定 | 初回のみ |
+| `Configure-Agents.sh` / `.bat` / `.command` | 役職ごとの CLI と足軽人数を対話式に設定 | 陣営構成を変える時 |
 | `shutsujin_departure.sh` | tmuxセッション作成 + エージェントごとの設定済みCLI起動 + 指示書読み込み + ntfyリスナー起動 | 毎日 |
 | `scripts/switch_cli.sh` | エージェントのCLI/モデルをライブ切替（settings.yaml → /exit → 再起動） | 必要時 |
 
@@ -588,7 +589,14 @@ notes: |
 
 #### 3. エージェント構成のカスタマイズ
 
-陣営構成（誰にどのCLIを使わせるか）は `config/settings.yaml`：
+陣営構成（誰にどのCLIを使わせるか）は `config/settings.yaml`。
+対話式に設定したい場合は、簡易 CUI を使えます：
+
+```bash
+bash Configure-Agents.sh
+```
+
+`cli.default`、将軍、家老、軍師、足軽人数、各足軽の CLI 種別の順に聞きます。既存の `model`、`variant`、`thinking` はデフォルトでは保持します。
 
 ```yaml
 cli:

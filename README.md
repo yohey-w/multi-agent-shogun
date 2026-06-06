@@ -447,6 +447,7 @@ Then restart your computer and run `install.bat` again.
 |--------|---------|-------------|
 | `install.bat` | Windows: WSL2 + Ubuntu setup | First time only |
 | `first_setup.sh` | Install tmux, Node.js, Claude Code CLI + Memory MCP config | First time only |
+| `Configure-Agents.sh` / `.bat` / `.command` | Guided CUI for role CLI assignment and Ashigaru count | When changing formation |
 | `shutsujin_departure.sh` | Create tmux sessions + launch the configured CLI for each agent + load instructions + start ntfy listener | Daily |
 | `scripts/switch_cli.sh` | Live switch agent CLI/model (settings.yaml → /exit → relaunch) | As needed |
 
@@ -584,7 +585,14 @@ Detailed project knowledge (requirements, design, past feedback) lives in `conte
 
 #### 3. Customizing the agent formation
 
-The agent formation (which CLI each agent uses) lives in `config/settings.yaml`:
+The agent formation (which CLI each agent uses) lives in `config/settings.yaml`.
+For guided setup, run the small configurator:
+
+```bash
+bash Configure-Agents.sh
+```
+
+It asks for `cli.default`, then Shogun, Karo, Gunshi, the active Ashigaru count, and each Ashigaru's CLI type. It preserves existing `model`, `variant`, and `thinking` fields by default.
 
 ```yaml
 cli:

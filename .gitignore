@@ -73,6 +73,9 @@
 !first_setup.sh
 !setup.sh
 !install.bat
+!Configure-Agents.sh
+!Configure-Agents.bat
+!Configure-Agents.command
 
 # Development tooling
 !Makefile
@@ -111,6 +114,7 @@
 !scripts/agent_status.sh
 !scripts/ratelimit_check.sh
 !scripts/switch_cli.sh
+!scripts/configure_agents.py
 !scripts/dashboard-viewer.py
 
 
