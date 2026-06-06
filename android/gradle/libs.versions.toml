@@ -13,6 +13,7 @@ navigationCompose = "2.7.7"
 jsch = "0.2.21"
 markwon = "4.6.2"
 accompanistSwiperefresh = "0.32.0"
+securityCrypto = "1.1.0-alpha06"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,6 +37,7 @@ jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
 markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
 markwon-ext-tables = { group = "io.noties.markwon", name = "ext-tables", version.ref = "markwon" }
 accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanistSwiperefresh" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -4,13 +4,14 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import com.shogun.android.util.Defaults
+import com.shogun.android.util.EncryptedPrefsProvider
 import com.shogun.android.util.PrefsKeys
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val prefs = application.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs = EncryptedPrefsProvider.getPreferences(application)
 
     private val _notificationEnabled = MutableStateFlow(prefs.getBoolean(PrefsKeys.NOTIFICATION_ENABLED, true))
     val notificationEnabled: StateFlow<Boolean> = _notificationEnabled

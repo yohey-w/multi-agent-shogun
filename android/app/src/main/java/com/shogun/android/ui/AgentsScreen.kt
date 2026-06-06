@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.shogun.android.ui.theme.*
 import com.shogun.android.util.Defaults
+import com.shogun.android.util.EncryptedPrefsProvider
 import com.shogun.android.util.PrefsKeys
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -174,7 +175,7 @@ fun AgentsScreen(
     val selectedPane = selectedPaneIndex?.let { idx -> panes.find { it.index == idx } }
 
     LaunchedEffect(profileId) {
-        val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        val prefs = EncryptedPrefsProvider.getPreferences(context)
         val host = prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST
         val port = prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR)?.toIntOrNull() ?: Defaults.SSH_PORT
         val user = prefs.getString(PrefsKeys.SSH_USER, "") ?: ""

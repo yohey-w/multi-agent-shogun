@@ -21,6 +21,8 @@ import androidx.lifecycle.lifecycleScope
 import com.shogun.android.data.Profile
 import com.shogun.android.data.SharedPreferencesProfileRepository
 import com.shogun.android.ssh.SshManager
+import com.shogun.android.util.EncryptedPrefsProvider
+import com.shogun.android.util.PreferencesMigration
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,6 +70,7 @@ val bottomNavItems = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PreferencesMigration.migrateIfNeeded(this)
         enableEdgeToEdge()
         NotificationHelper.initChannels(this)
         setContent {
@@ -80,7 +83,7 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         } else true
-        if (hasNotifPerm && getSharedPreferences(PrefsKeys.PREFS_NAME, MODE_PRIVATE)
+        if (hasNotifPerm && EncryptedPrefsProvider.getPreferences(this)
                 .getBoolean(PrefsKeys.NOTIFICATION_ENABLED, true)) {
             try {
                 startForegroundService(Intent(this, NtfyService::class.java))
@@ -124,7 +127,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val prefs = getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = EncryptedPrefsProvider.getPreferences(this)
         val repository = SharedPreferencesProfileRepository(prefs)
         val activeId = repository.getActiveProfileId()
         val activeProfile = repository.loadProfiles().let { profiles ->

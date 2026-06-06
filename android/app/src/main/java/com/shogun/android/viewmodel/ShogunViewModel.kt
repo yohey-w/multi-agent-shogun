@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.shogun.android.SshForegroundService
 import com.shogun.android.ssh.SshManager
 import com.shogun.android.util.Defaults
+import com.shogun.android.util.EncryptedPrefsProvider
 import com.shogun.android.util.PrefsKeys
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -19,7 +20,7 @@ import kotlinx.coroutines.launch
 class ShogunViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sshManager = SshManager.getInstance()
-    private val prefs = application.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs = EncryptedPrefsProvider.getPreferences(application)
 
     private val _paneContent = MutableStateFlow("")
     val paneContent: StateFlow<String> = _paneContent

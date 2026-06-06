@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.shogun.android.data.ProfileRepository
 import com.shogun.android.data.SharedPreferencesProfileRepository
+import com.shogun.android.util.EncryptedPrefsProvider
 import com.shogun.android.util.PrefsKeys
 
 class DashboardViewModelFactory(
@@ -13,7 +14,7 @@ class DashboardViewModelFactory(
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        val prefs = application.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = EncryptedPrefsProvider.getPreferences(application)
         val repository: ProfileRepository = SharedPreferencesProfileRepository(prefs)
         @Suppress("UNCHECKED_CAST")
         return DashboardViewModel(application, repository) as T

@@ -21,6 +21,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import com.shogun.android.util.Defaults
+import com.shogun.android.util.EncryptedPrefsProvider
 import com.shogun.android.util.PrefsKeys
 import java.util.concurrent.TimeUnit
 
@@ -47,7 +48,7 @@ class NtfyService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        val prefs = getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = EncryptedPrefsProvider.getPreferences(this)
         if (!prefs.getBoolean(PrefsKeys.NOTIFICATION_ENABLED, true)) {
             stopSelf()
             return
