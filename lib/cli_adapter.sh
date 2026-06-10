@@ -3,7 +3,7 @@
 # Multi-CLI統合設計書 (reports/design_multi_cli_support.md) §2.2 準拠
 #
 # 提供関数:
-#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "opencode"
+#   get_cli_type(agent_id)                  → "claude" | "codex" | "copilot" | "kimi" | "opencode" | "gemini" | "antigravity"
 #   build_cli_command(agent_id)             → 完全なコマンド文字列
 #   get_instruction_file(agent_id [,cli_type]) → 指示書パス
 #   validate_cli_availability(cli_type)     → 0=OK, 1=NG
@@ -17,7 +17,7 @@ CLI_ADAPTER_PROJECT_ROOT="$(cd "${CLI_ADAPTER_DIR}/.." && pwd)"
 CLI_ADAPTER_SETTINGS="${CLI_ADAPTER_SETTINGS:-${CLI_ADAPTER_PROJECT_ROOT}/config/settings.yaml}"
 
 # 許可されたCLI種別
-CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi opencode"
+CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi opencode gemini antigravity"
 
 # normalize_opencode_model(model)
 # OpenCode向けにprovider-qualifiedなモデル名へ正規化する。
@@ -141,18 +141,18 @@ try:
         print('claude'); sys.exit(0)
     agents = cli.get('agents', {})
     if not isinstance(agents, dict):
-        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','opencode') else 'claude')
+        print(cli.get('default', 'claude') if cli.get('default', 'claude') in ('claude','codex','copilot','kimi','opencode','gemini','antigravity') else 'claude')
         sys.exit(0)
     agent_cfg = agents.get('${agent_id}')
     if isinstance(agent_cfg, dict):
         t = agent_cfg.get('type', '')
-        if t in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+        if t in ('claude', 'codex', 'copilot', 'kimi', 'opencode', 'gemini', 'antigravity'):
             print(t); sys.exit(0)
     elif isinstance(agent_cfg, str):
-        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+        if agent_cfg in ('claude', 'codex', 'copilot', 'kimi', 'opencode', 'gemini', 'antigravity'):
             print(agent_cfg); sys.exit(0)
     default = cli.get('default', 'claude')
-    if default in ('claude', 'codex', 'copilot', 'kimi', 'opencode'):
+    if default in ('claude', 'codex', 'copilot', 'kimi', 'opencode', 'gemini', 'antigravity'):
         print(default)
     else:
         print('claude', file=sys.stderr)
@@ -248,6 +248,22 @@ build_cli_command() {
                 cmd="$cmd --model $model"
             fi
             ;;
+        gemini)
+            cmd="gemini"
+            if [[ -n "$model" ]]; then
+                cmd="$cmd --model $model"
+            fi
+            cmd="$cmd --yolo"
+            ;;
+        antigravity)
+            cmd="agy"
+            if [[ -n "$model" ]]; then
+                local quoted_model
+                quoted_model=$(_cli_adapter_shell_quote "$model")
+                cmd="$cmd --model $quoted_model"
+            fi
+            cmd="$cmd --dangerously-skip-permissions"
+            ;;
         *)
             cmd="claude $permission_flag"
             ;;
@@ -286,6 +302,8 @@ get_instruction_file() {
         copilot) echo ".github/copilot-instructions-${role}.md" ;;
         kimi)    echo "instructions/generated/kimi-${role}.md" ;;
         opencode) echo "instructions/generated/opencode-${role}.md" ;;
+        gemini)  echo "instructions/generated/gemini-${role}.md" ;;
+        antigravity) echo "instructions/generated/antigravity-${role}.md" ;;
         *)       echo "instructions/${role}.md" ;;
     esac
 }
@@ -325,6 +343,21 @@ validate_cli_availability() {
                 echo "[ERROR] Kimi CLI not found. Install from https://platform.moonshot.cn/" >&2
                 return 1
             fi
+            ;;
+        gemini)
+            command -v gemini &>/dev/null || {
+                echo "[ERROR] Gemini CLI not found. Install with: npm install -g @google/gemini-cli" >&2
+                return 1
+            }
+            if [[ -z "${GEMINI_API_KEY:-}" ]]; then
+                echo "[WARN] GEMINI_API_KEY not set. Gemini CLI may fail to authenticate." >&2
+            fi
+            ;;
+        antigravity)
+            command -v agy &>/dev/null || {
+                echo "[ERROR] Antigravity CLI not found. Install agy, then run: agy install" >&2
+                return 1
+            }
             ;;
         *)
             echo "[ERROR] Unknown CLI type: '$cli_type'. Allowed: $CLI_ADAPTER_ALLOWED_CLIS" >&2
@@ -370,6 +403,19 @@ get_agent_model() {
                 *)              echo "k2.5" ;;
             esac
             ;;
+        gemini)
+            case "$agent_id" in
+                shogun|gunshi)  echo "gemini-2.5-pro" ;;
+                *)              echo "gemini-2.5-flash" ;;
+            esac
+            ;;
+        antigravity)
+            case "$agent_id" in
+                shogun|gunshi)  echo "Claude Opus 4.6 (Thinking)" ;;
+                karo)           echo "Claude Sonnet 4.6 (Thinking)" ;;
+                *)              echo "Gemini 3.5 Flash (Medium)" ;;
+            esac
+            ;;
         *)
             # Claude Code/Codex/Copilot用デフォルトモデル
             case "$agent_id" in
@@ -409,6 +455,14 @@ get_model_display_name() {
     local short=""
     case "$model" in
         *spark*)                short="Spark" ;;
+        *"Gemini 3.1 Pro"*)     short="AGY-Gemini-Pro" ;;
+        *"Gemini 3.5 Flash"*)   short="AGY-Flash" ;;
+        *"Claude Opus 4.6"*)    short="AGY-Opus" ;;
+        *"Claude Sonnet 4.6"*)  short="AGY-Sonnet" ;;
+        *"GPT-OSS"*)            short="AGY-GPT" ;;
+        *gemini*2.5*pro*|*gemini*pro*)     short="Gemini-Pro" ;;
+        *gemini*2.5*flash*|*gemini*flash*) short="Gemini-Flash" ;;
+        *gemini*)                          short="Gemini" ;;
         gpt-5.3-codex)          short="Codex5.3" ;;
         *codex*|gpt-5.3)        short="Codex" ;;
         *opus*)                 short="Opus" ;;
@@ -421,6 +475,8 @@ get_model_display_name() {
                 codex)   short="Codex" ;;
                 copilot) short="Copilot" ;;
                 kimi)    short="Kimi" ;;
+                gemini)  short="Gemini" ;;
+                antigravity) short="AntiG" ;;
                 *)       short="$model" ;;
             esac
             ;;
@@ -455,6 +511,12 @@ get_startup_prompt() {
         codex)
             echo "Session Start — do ALL of this in one turn, do NOT stop early: 1) tmux display-message -t \"\$TMUX_PANE\" -p '#{@agent_id}' to identify yourself. 2) Read queue/tasks/${agent_id}.yaml. 3) Read queue/inbox/${agent_id}.yaml, mark read:true. 4) Read files listed in context_files. 5) Execute the assigned task to completion — edit files, run commands, write reports. Keep working until the task is done."
             ;;
+        gemini)
+            echo "Session Start — do ALL of this in one turn, do NOT stop early: 1) tmux display-message -t \"\$TMUX_PANE\" -p '#{@agent_id}' to identify yourself. 2) Read queue/tasks/${agent_id}.yaml. 3) Read queue/inbox/${agent_id}.yaml, mark read:true. 4) Read files listed in context_files. 5) Execute the assigned task to completion — edit files, run commands, write reports. Keep working until the task is done."
+            ;;
+        antigravity)
+            echo "Session Start — do ALL of this in one turn, do NOT stop early: 1) tmux display-message -t \"\$TMUX_PANE\" -p '#{@agent_id}' to identify yourself. 2) Read queue/tasks/${agent_id}.yaml. 3) Read queue/inbox/${agent_id}.yaml, mark read:true. 4) Read files listed in context_files. 5) Execute the assigned task to completion — edit files, run commands, write reports. Keep working until the task is done."
+            ;;
         *)
             echo ""
             ;;
@@ -482,6 +544,9 @@ get_startup_prompt_arg() {
 
     case "$cli_type" in
         codex)
+            echo "$quoted_prompt"
+            ;;
+        gemini)
             echo "$quoted_prompt"
             ;;
         *)
@@ -826,6 +891,8 @@ can_model_switch() {
         codex)   echo "limited" ;;
         copilot) echo "none" ;;
         kimi)    echo "none" ;;
+        gemini)  echo "none" ;;
+        antigravity) echo "none" ;;
         *)       echo "none" ;;
     esac
 }

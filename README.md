@@ -4,7 +4,7 @@
 
 **Command your AI army like a feudal warlord.**
 
-Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copilot, Kimi Code, OpenCode** — orchestrated through a samurai-inspired hierarchy with zero coordination overhead.
+Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copilot, Kimi Code, OpenCode, Antigravity** — orchestrated through a samurai-inspired hierarchy with zero coordination overhead.
 
 **Talk Coding, not Vibe Coding. Speak to your phone, AI executes.**
 
@@ -32,7 +32,7 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
 
 ## Quick Start
 
-**Requirements:** tmux, bash 4+, at least one of: [Claude Code](https://claude.ai/code) / Codex / Copilot / Kimi / OpenCode
+**Requirements:** tmux, bash 4+, at least one of: [Claude Code](https://claude.ai/code) / Codex / Copilot / Kimi / OpenCode / Antigravity
 
 ```bash
 git clone https://github.com/yohey-w/multi-agent-shogun
@@ -58,7 +58,7 @@ You watch the dashboard. That's it.
 
 ## What is this?
 
-**multi-agent-shogun** is a system that runs multiple AI coding CLI instances simultaneously, orchestrating them like a feudal Japanese army. Supports **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, **Kimi Code**, and **OpenCode**.
+**multi-agent-shogun** is a system that runs multiple AI coding CLI instances simultaneously, orchestrating them like a feudal Japanese army. Supports **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, **Kimi Code**, **OpenCode**, and **Antigravity**.
 
 **Why use it?**
 - One command spawns 7 AI workers + 1 strategist executing in parallel
@@ -95,7 +95,7 @@ Most multi-agent frameworks burn API tokens on coordination. Shogun doesn't.
 | **Architecture** | Subagents inside one process | Team lead + teammates (JSON mailbox) | Graph-based state machine | Role-based agents | Feudal hierarchy via tmux |
 | **Parallelism** | Sequential (one at a time) | Multiple independent sessions | Parallel nodes (v0.2+) | Limited | **8 independent agents** |
 | **Coordination cost** | API calls per Task | Token-heavy (each teammate = separate context) | API + infra (Postgres/Redis) | API + CrewAI platform | **Zero** (YAML + tmux) |
-| **Multi-CLI** | Claude Code only | Claude Code only | Any LLM API | Any LLM API | **5 CLIs** (Claude/Codex/Copilot/Kimi/OpenCode) |
+| **Multi-CLI** | Claude Code only | Claude Code only | Any LLM API | Any LLM API | **6 CLIs** (Claude/Codex/Copilot/Kimi/OpenCode/Antigravity) |
 | **Observability** | Claude logs only | tmux split-panes or in-process | LangSmith integration | OpenTelemetry | **Live tmux panes** + dashboard |
 | **Skill discovery** | None | None | None | None | **Bottom-up auto-proposal** |
 | **Setup** | Built into Claude Code | Built-in (experimental) | Heavy (infra required) | pip install | Shell scripts |
@@ -125,7 +125,7 @@ Most AI coding tools charge per token. Running 8 Opus-grade agents through the A
 
 ### Multi-CLI Support
 
-Shogun isn't locked to one vendor. The system supports 5 CLI tools, each with unique strengths:
+Shogun isn't locked to one vendor. The system supports 6 CLI tools, each with unique strengths:
 
 | CLI | Key Strength | Default Model |
 |-----|-------------|---------------|
@@ -134,6 +134,7 @@ Shogun isn't locked to one vendor. The system supports 5 CLI tools, each with un
 | **GitHub Copilot** | Built-in GitHub MCP, 4 specialized agents (Explore/Task/Plan/Code-review), `/delegate` to coding agent | Claude Sonnet 4.6 |
 | **Kimi Code** | Free tier available, strong multilingual support | Kimi k2 |
 | **OpenCode** | Shared `AGENTS.md` instructions, agent-specific definitions via `--agent`, `/new` context reset, restart-only model changes, deterministic interactive TUI launch, provider-qualified `--model` routing | provider/model |
+| **Antigravity** | Multi-model hub (Gemini/Claude/GPT-OSS), `--dangerously-skip-permissions`, `/clear` context reset, `agy models` list, plugin management | Gemini 3.5 Flash (Medium) |
 
 OpenCode sessions load the agent-specific `.opencode/agents/<agent_id>.md` definition via `--agent` and keep automation resets on `/new`; model changes require a relaunch. Automation uses the repository-provided `config/opencode-tui.json` via `OPENCODE_TUI_CONFIG`, which disables `app_exit` and pins `session_interrupt`/`input_clear` to known bindings. Role boundaries are embedded in the generated agent frontmatter: Shogun can read `queue/reports/*` for oversight but cannot write them, Karo is limited to coordination files plus report aggregation, Ashigaru only touch their own task/report pair, and Gunshi reads ashigaru reports but only writes `gunshi_report.yaml`.
 
@@ -484,6 +485,7 @@ If you prefer to install dependencies manually:
 | GitHub Copilot CLI | Install and authenticate GitHub Copilot CLI | Required only for agents with `type: copilot` |
 | Kimi Code CLI | Install and authenticate Kimi Code | Required only for agents with `type: kimi` |
 | OpenCode CLI | `npm install -g opencode-ai` | Required only for agents with `type: opencode`; provider API keys must be available in the agent shell |
+| Antigravity CLI | `curl -fsSL https://antigravity.google/cli/install.sh \| bash` | Required only for agents with `type: antigravity`; authenticate with OAuth or `ANTIGRAVITY_API_KEY` |
 
 </details>
 
@@ -590,7 +592,7 @@ The agent formation (which CLI each agent uses) lives in `config/settings.yaml`:
 cli:
   agents:
     ashigaru1:
-      type: codex          # codex / claude / copilot / kimi / opencode
+      type: codex          # codex / claude / copilot / kimi / opencode / antigravity
       model: gpt-5.5
     ashigaru2:
       type: claude

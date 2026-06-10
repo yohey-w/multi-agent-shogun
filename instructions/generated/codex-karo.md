@@ -626,7 +626,8 @@ Cross-reference with dashboard.md — process any reports not yet reflected.
 
 **Always use `date` command.** Never guess.
 ```bash
-date "+%Y-%m-%d %H:%M"       # For dashboard.md
+date "+%Y-%m-%d %H:%M"       # For dashboard.md 最終更新: header
+date "+%m/%d %H:%M"          # For dashboard.md 戦果 table time column, mm/dd hh:mm (e.g. 06/10 15:55)
 date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 ```
 

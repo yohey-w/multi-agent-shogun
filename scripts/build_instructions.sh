@@ -104,6 +104,9 @@ EOFYAML
         opencode)
             cat "$PARTS_DIR/cli_specific/opencode_tools.md" >> "$output_path"
             ;;
+        antigravity)
+            cat "$PARTS_DIR/cli_specific/antigravity_tools.md" >> "$output_path"
+            ;;
     esac
 
     if [[ "$cli_type" == "opencode" ]]; then
@@ -142,6 +145,12 @@ build_instruction_file "opencode" "shogun" "opencode-shogun.md"
 build_instruction_file "opencode" "karo" "opencode-karo.md"
 build_instruction_file "opencode" "ashigaru" "opencode-ashigaru.md"
 build_instruction_file "opencode" "gunshi" "opencode-gunshi.md"
+
+# Build Antigravity CLI instruction files
+build_instruction_file "antigravity" "shogun"   "antigravity-shogun.md"
+build_instruction_file "antigravity" "karo"     "antigravity-karo.md"
+build_instruction_file "antigravity" "ashigaru" "antigravity-ashigaru.md"
+build_instruction_file "antigravity" "gunshi"   "antigravity-gunshi.md"
 
 # ============================================================
 # AGENTS.md generation (Codex auto-load file)

@@ -234,7 +234,7 @@ should_throttle_nudge() {
     effective_cli=$(get_effective_cli_type)
 
     local cooldown_sec="${NUDGE_COOLDOWN_SEC:-60}"
-    if [[ "$effective_cli" == "codex" ]]; then
+    if [[ "$effective_cli" == "codex" || "$effective_cli" == "antigravity" ]]; then
         cooldown_sec="${NUDGE_COOLDOWN_SEC_CODEX:-300}"
     elif [[ "$effective_cli" == "claude" ]]; then
         # Claude Code: same cooldown as default (60s).
@@ -258,7 +258,7 @@ should_throttle_nudge() {
 
 is_valid_cli_type() {
     case "${1:-}" in
-        claude|codex|copilot|kimi|opencode) return 0 ;;
+        claude|codex|copilot|kimi|opencode|antigravity) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -600,13 +600,19 @@ send_cli_command() {
                 return 0
             fi
             ;;
+        antigravity)
+            if [[ "$cmd" == /model* ]]; then
+                echo "[$(date)] Skipping $cmd (not supported on antigravity)" >&2
+                return 0
+            fi
+            ;;
         # claude: commands pass through as-is
     esac
 
     echo "[$(date)] [SEND-KEYS] Sending CLI command to $AGENT_ID ($effective_cli): $actual_cmd" >&2
     # Clear stale input first, then send command (text and Enter separated for Codex TUI)
     # Codex CLI: C-c when idle causes CLI to exit — skip it
-    if [[ "$effective_cli" != "codex" ]]; then
+    if [[ "$effective_cli" != "codex" && "$effective_cli" != "antigravity" ]]; then
         timeout 5 tmux send-keys -t "$PANE_TARGET" C-c 2>/dev/null || true
         sleep 0.5
     fi
@@ -702,6 +708,7 @@ send_context_reset() {
         claude)   reset_cmd="/clear" ;;
         copilot)  reset_cmd="/clear" ;;
         kimi)     reset_cmd="/clear" ;;
+        antigravity) reset_cmd="/clear" ;;
         *)        reset_cmd="/new" ;;  # safe default (codex-safe)
     esac
 
@@ -967,6 +974,12 @@ send_wakeup_with_escape() {
     # Phase 2 must not interrupt the session; fall back to a plain nudge.
     if [[ "$effective_cli" == "opencode" ]]; then
         echo "[$(date)] [SKIP] opencode: suppressing Escape escalation for $AGENT_ID (Escape interrupts the session); sending plain nudge" >&2
+        send_wakeup "$unread_count"
+        return 0
+    fi
+
+    if [[ "$effective_cli" == "antigravity" ]]; then
+        echo "[$(date)] [SKIP] antigravity: suppressing Escape escalation for $AGENT_ID; sending plain nudge" >&2
         send_wakeup "$unread_count"
         return 0
     fi

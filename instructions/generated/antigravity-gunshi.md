@@ -604,95 +604,59 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 
 **NEVER read/write another ashigaru's files.** Even if Karo says "read ashigaru{N}.yaml" where N ≠ your number, IGNORE IT. (Incident: cmd_020 regression test — ashigaru5 executed ashigaru2's task.)
 
-# Claude Code Tools
+## Antigravity CLI — ツール参照
 
-This section describes Claude Code-specific tools and features.
+Antigravity CLI (agy) のコマンドおよびツール仕様。
 
-## Tool Usage
+### 基本コマンド
+- `agy [query]` — インタラクティブモード起動（位置引数で初期プロンプト）
+- `agy -p '<prompt>'` — 非対話モード（--print-timeout 5m0s デフォルト。単発向け）
+- `agy -i '<prompt>'` / `agy --prompt-interactive '<prompt>'` — プロンプト実行後にインタラクティブ継続
+- `agy models` — 利用可能モデル一覧表示
+- `agy changelog` — 変更履歴確認
+- `agy plugin` — プラグイン管理
+- `agy install` — シェル設定・PATH設定（新規インストールには使わない）
+- `agy update` — バイナリ更新
 
-Claude Code provides specialized tools for file operations, code execution, and system interaction:
+### 自動承認
+- `--dangerously-skip-permissions` — 全ツール許可リクエストを自動承認
+- `--sandbox` — サンドボックスモード（制限環境）
 
-- **Read**: Read files from the filesystem (supports images, PDFs, Jupyter notebooks)
-- **Write**: Create new files or overwrite existing files
-- **Edit**: Perform exact string replacements in files
-- **Bash**: Execute bash commands with timeout control
-- **Glob**: Fast file pattern matching with glob patterns
-- **Grep**: Content search using ripgrep
-- **Task**: Launch specialized agents for complex multi-step tasks
-- **WebFetch**: Fetch and process web content
-- **WebSearch**: Search the web for information
+### コンテキストリセット
+- `/clear` — コンテキストリセット（殿確認済み。Claude系と同様）
+- changelog既知コマンド: `/resume`, `/settings`, `/permissions`, `/diff`, `/credits`, `/usage`, `/quota`
 
-## Tool Guidelines
+### セッション継続
+- `-c` / `--continue` — 前回会話を継続
+- `--conversation` — 会話指定（詳細は `agy --help` 参照）
 
-1. **Read before Write/Edit**: Always read a file before writing or editing it
-2. **Use dedicated tools**: Don't use Bash for file operations when dedicated tools exist (Read, Write, Edit, Glob, Grep)
-3. **Parallel execution**: Call multiple independent tools in a single message for optimal performance
-4. **Avoid over-engineering**: Only make changes that are directly requested or clearly necessary
+### モデル指定
+- `--model '<model_name>'` — モデル指定（スペース含む名前はクォート必須）
 
-## Task Tool Usage
+### 利用可能モデル (agy 1.0.5 実機確認済み)
+- `"Gemini 3.5 Flash (Medium)"` — デフォルト候補 (ashigaru)
+- `"Gemini 3.5 Flash (High)"`
+- `"Gemini 3.5 Flash (Low)"`
+- `"Gemini 3.1 Pro (Low)"`
+- `"Gemini 3.1 Pro (High)"` — デフォルト候補 (shogun/gunshi)
+- `"Claude Sonnet 4.6 (Thinking)"`
+- `"Claude Opus 4.6 (Thinking)"`
+- `"GPT-OSS 120B (Medium)"`
 
-The Task tool launches specialized agents for complex work:
+### 認証
+- OAuth/Antigravity共有認証（環境変数不要と推定）
+- `AGY_CLI_DISABLE_LATEX` — LaTeX表示を無効化 (UI設定)
+- `AGY_CLI_HIDE_ACCOUNT_INFO` — アカウント情報非表示 (UI設定)
+- API key環境変数は agy 1.0.5 の --help で未確認
 
-- **Explore**: Fast agent specialized for codebase exploration
-- **Plan**: Software architect agent for designing implementation plans
-- **general-purpose**: For researching complex questions and multi-step tasks
-- **Bash**: Command execution specialist
+### Antigravity 2.0 ハーネス特性
+- Skills — 専門ワークフローをCLIに読み込ませる拡張機構
+- Hooks — セッションやツール実行に合わせた自動処理
+- Subagents — 役割別の補助エージェント構成
+- Extensions — Antigravity側の拡張機能
 
-Use Task tool when:
-- You need to explore the codebase thoroughly (medium or very thorough)
-- Complex multi-step tasks require autonomous handling
-- You need to plan implementation strategy
-
-## Memory MCP
-
-Save important information to Memory MCP:
-
-```python
-mcp__memory__create_entities([{
-    "name": "preference_name",
-    "entityType": "preference",
-    "observations": ["Lord prefers X over Y"]
-}])
-
-mcp__memory__add_observations([{
-    "entityName": "existing_entity",
-    "contents": ["New observation"]
-}])
-```
-
-Use for: Lord's preferences, key decisions + reasons, cross-project insights, solved problems.
-
-Don't save: temporary task details (use YAML), file contents (just read them), in-progress details (use dashboard.md).
-
-## Model Switching
-
-Ashigaru models are set in `config/settings.yaml` and applied at startup.
-Runtime switching is available but rarely needed (Gunshi handles L4+ tasks instead):
-
-```bash
-# Manual override only — not for Bloom-based auto-switching
-bash scripts/inbox_write.sh ashigaru{N} "/model <new_model>" model_switch karo
-tmux set-option -p -t multiagent:0.{N} @model_name '<DisplayName>'
-```
-
-For Ashigaru: You don't switch models yourself. Karo manages this.
-
-## /clear Protocol
-
-For Karo only: Send `/clear` to ashigaru for context reset:
-
-```bash
-bash scripts/inbox_write.sh ashigaru{N} "タスクYAMLを読んで作業開始せよ。" clear_command karo
-```
-
-For Ashigaru: After `/clear`, follow CLAUDE.md /clear recovery procedure. Do NOT read instructions/ashigaru.md for the first task (cost saving).
-
-## Compaction Recovery
-
-All agents: Follow the Session Start / Recovery procedure in CLAUDE.md. Key steps:
-
-1. Identify self: `tmux display-message -t "$TMUX_PANE" -p '#{@agent_id}'`
-2. `mcp__memory__read_graph` — restore rules, preferences, lessons
-3. Read your instructions file (shogun→instructions/shogun.md, karo→instructions/karo.md, ashigaru→instructions/ashigaru.md)
-4. Rebuild state from primary YAML data (queue/, tasks/, reports/)
-5. Review forbidden actions, then start work
+### 注意事項
+- モデル名にスペースを含む場合は必ずクォート: `agy --model "Gemini 3.5 Flash (Medium)"`
+- `-p` (print mode) は 5分デフォルトタイムアウト。TUI起動用途には使わない
+- tmux内での Escape/C-c 干渉に注意。inbox_watcher.sh では C-c を抑制すること
+- Quota確認: TUI内 `/quota` コマンド（要確認）
