@@ -587,7 +587,7 @@ notes: |
 
 The Shogun and Karo reference this file and inject project context when issuing cmds.
 
-Detailed project knowledge (requirements, design, past feedback) lives in `context/{name}.md`. When the Shogun issues a cmd related to the project, it automatically references this file.
+Detailed project knowledge (requirements, design, past feedback) lives in `context/{name}.md`. When a task includes a `project:` field, agents are instructed to read `context/{name}.md` for project-specific knowledge.
 
 #### 3. Customizing the agent formation
 
@@ -1737,17 +1737,19 @@ multi-agent-shogun/
 
 This system manages not just its own development, but **all white-collar tasks**. Project folders can be located outside this repository.
 
-### How it works
+### Recommended convention
 
 ```
 config/projects.yaml          # Project list (ID, name, path, status only)
 projects/<project_id>.yaml    # Full details for each project
 ```
 
-- **`config/projects.yaml`**: A summary list of what projects exist
-- **`projects/<id>.yaml`**: Complete details (client info, contracts, tasks, related files, Notion pages, etc.)
+- **`config/projects.yaml`**: A user-populated summary list of what projects exist
+- **`projects/<id>.yaml`**: Optional complete details (client info, contracts, tasks, related files, Notion pages, etc.)
 - **Project files** (source code, documents, etc.) live in the external folder specified by `path`
 - **`projects/` is excluded from git** (contains confidential client information)
+
+This two-layer structure is a recommended convention for deployments that manage multiple or confidential projects, not an enforced feature. `config/projects.yaml` is read by agents via their instructions, not by automated scripts. Populate it when managing multiple projects.
 
 ### Example
 
@@ -1772,7 +1774,7 @@ current_tasks:
     status: in_progress
 ```
 
-This separation lets the Shogun System coordinate across multiple external projects while keeping project details out of version control.
+With this convention, you can organize multiple external projects while keeping project details out of version control.
 
 ---
 
