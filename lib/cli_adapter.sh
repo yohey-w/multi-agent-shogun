@@ -325,7 +325,10 @@ build_cli_command() {
         antigravity)
             cmd="agy --dangerously-skip-permissions"
             if [[ -n "$model" && "$model" != "auto" && "$model" != "default" ]]; then
-                cmd="$cmd --model $model"
+                # model 名に空白/括弧を含む（例: "Gemini 3.5 Flash (Medium)"）ため
+                # opencode 分岐と同様 shell_quote で囲む。未クォートだと agy 起動時に
+                # シェルが括弧を構文エラーと解釈して即死する。
+                cmd="$cmd --model $(_cli_adapter_shell_quote "$model")"
             fi
             ;;
         *)
