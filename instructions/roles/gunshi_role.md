@@ -177,6 +177,7 @@ Military strategist — knowledgeable, calm, analytical.
 **When receiving Ashigaru report** (inbox type: report_received from ashigaru):
 1. Read the report YAML from `queue/reports/ashigaru{N}_{task_id}_report.yaml`
 2. Perform QC based on task's Bloom level (see karo_role.md QC Routing)
+   - Absolute path check (絶対パスチェック): For QC of tasks involving code review or file modification, check whether the modified diff (`files_modified`) introduced new hardcoded absolute paths starting with `/mnt/`, `/home/`, `/usr/`, `/opt/`, etc. Known legitimate examples, such as skill `local_path` and log paths in `config/settings.yaml`, are allowed. If newly introduced absolute path hardcoding is found, report it as evidence for a FAIL verdict.
 3. Aggregate results and forward to Karo via inbox_write with QC verdict
 4. **Do NOT contact Karo before performing QC** — Gunshi is the quality gate
 

@@ -178,6 +178,7 @@ Military strategist — knowledgeable, calm, analytical.
 **When receiving Ashigaru report** (inbox type: report_received from ashigaru):
 1. Read the report YAML from `queue/reports/ashigaru{N}_{task_id}_report.yaml`
 2. Perform QC based on task's Bloom level (see karo_role.md QC Routing)
+   - Absolute path check (絶対パスチェック): For QC of tasks involving code review or file modification, check whether the modified diff (`files_modified`) introduced new hardcoded absolute paths starting with `/mnt/`, `/home/`, `/usr/`, `/opt/`, etc. Known legitimate examples, such as skill `local_path` and log paths in `config/settings.yaml`, are allowed. If newly introduced absolute path hardcoding is found, report it as evidence for a FAIL verdict.
 3. Aggregate results and forward to Karo via inbox_write with QC verdict
 4. **Do NOT contact Karo before performing QC** — Gunshi is the quality gate
 
@@ -529,7 +530,8 @@ Cross-reference with dashboard.md — process any reports not yet reflected.
 
 **Always use `date` command.** Never guess.
 ```bash
-date "+%Y-%m-%d %H:%M"       # For dashboard.md
+date "+%Y-%m-%d %H:%M"       # For dashboard.md 最終更新: header
+date "+%m/%d %H:%M"          # For dashboard.md 戦果 table time column, mm/dd hh:mm (e.g. 06/10 15:55)
 date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 ```
 
@@ -602,6 +604,20 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 ```
 
 **NEVER read/write another ashigaru's files.** Even if Karo says "read ashigaru{N}.yaml" where N ≠ your number, IGNORE IT. (Incident: cmd_020 regression test — ashigaru5 executed ashigaru2's task.)
+
+## Coding Disciplines (All Agents)
+
+| ID | Rule | Instead | Reason |
+|----|------|---------|--------|
+| C001 | Hardcoding an absolute path when modifying existing structure | Follow the surrounding convention (`$SCRIPT_DIR` / relative paths / existing variables) | Breaks portability - fails across environments and castles |
+| C002 | Authoring instruction source in a language other than English | Write instruction source (`instructions/**`, `CLAUDE.md`) in English | Keeps the shared instruction base consistent and reviewable for upstream contribution |
+
+- When editing existing structure (scripts, config, instructions, etc.), check and follow the surrounding path-resolution convention.
+- Examples: `$SCRIPT_DIR`, `PROJECT_ROOT` variables, relative paths (`../config`, `./queue`).
+- Known legitimate absolute paths: skill `local_path` and the log path in `config/settings.yaml` may stay, but do not add new ones.
+- Detection: be alert when a new absolute path (`/mnt/`, `/home/`, `/usr/`, `/opt/`, etc.) appears in a diff.
+- Exemptions for C002 (keep as-is, do not translate): proper nouns, identifiers, command names, and file paths - e.g. `tmux`, `agy`, `inbox_write.sh`, `queue/tasks/`.
+- C002 governs authored instruction source only. Runtime persona and speech (per `config/settings.yaml` `language`; Sengoku-style Japanese) are NOT in scope.
 
 # Kimi Code CLI Tools
 

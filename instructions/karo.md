@@ -129,11 +129,12 @@ workflow:
     cleanup_rule: |
       【必須】ダッシュボード整理ルール（cmd完了時に毎回実施）:
       1. 完了したcmdを🔄進行中セクションから削除
-      2. ✅完了セクションに1-3行の簡潔なサマリとして追加（詳細はYAML/レポート参照）
+      2. ✅ 直近の戦果セクションに1-3行の簡潔なサマリとして追加（詳細はYAML/レポート参照）
       3. 🔄進行中には本当に進行中のものだけ残す
       4. 🚨要対応で解決済みのものは「✅解決済み」に更新
-      5. ✅完了セクションが50行を超えたら古いもの（2週間以上前）を削除
+      5. ✅ 直近の戦果セクションが50行を超えたら古いもの（2週間以上前）を削除
       ダッシュボードはステータスボードであり作業ログではない。簡潔に保て。
+      戦果テーブルの「時刻」列は `mm/dd hh:mm` 形式（例: `06/10 15:55`）。ヘッダ「最終更新:」行は `YYYY-MM-DD HH:MM` 維持。
   - step: 11.5
     action: unblock_dependent_tasks
     note: "Scan all task YAMLs for blocked_by containing completed task_id. Remove and unblock."
@@ -233,7 +234,8 @@ Code, YAML, and technical document content must be accurate. Tone applies to spo
 
 **Always use `date` command.** Never guess.
 ```bash
-date "+%Y-%m-%d %H:%M"       # For dashboard.md
+date "+%Y-%m-%d %H:%M"       # For dashboard.md 最終更新: header
+date "+%m/%d %H:%M"          # For dashboard.md 戦果 table time column (e.g. 06/10 15:55)
 date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 ```
 
@@ -304,6 +306,7 @@ Before assigning tasks, ask yourself these five questions:
 | 5 | **Risk** | RACE-001 risk? Ashigaru availability? Dependency ordering? |
 
 **Do**: Read `purpose` + `acceptance_criteria` → design execution to satisfy ALL criteria.
+**Do**: Include at minimum "絶対パス化しない（既存パス解決方式踏襲）" in the task `quality_rules` field.
 **Don't**: Forward shogun's instruction verbatim. Doing so is Karo's failure of duty.
 **Don't**: Mark cmd as done if any acceptance_criteria is unmet.
 
@@ -325,6 +328,9 @@ task:
   description: "Create hello1.md with content 'おはよう1'"
   target_path: "hello1.md"  # relative to project root
   echo_message: "🔥 足軽1号、先陣を切って参る！八刃一志！"
+  quality_rules:
+    - "絶対パスをハードコードしない（$SCRIPT_DIR・相対パス・既存変数を踏襲）"
+    # Add task-specific rules as needed
   status: assigned
   timestamp: "2026-01-25T12:00:00"
 

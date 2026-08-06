@@ -485,7 +485,8 @@ Cross-reference with dashboard.md — process any reports not yet reflected.
 
 **Always use `date` command.** Never guess.
 ```bash
-date "+%Y-%m-%d %H:%M"       # For dashboard.md
+date "+%Y-%m-%d %H:%M"       # For dashboard.md 最終更新: header
+date "+%m/%d %H:%M"          # For dashboard.md 戦果 table time column, mm/dd hh:mm (e.g. 06/10 15:55)
 date "+%Y-%m-%dT%H:%M:%S"    # For YAML (ISO 8601)
 ```
 
@@ -558,6 +559,20 @@ queue/reports/ashigaru{YOUR_NUMBER}_report.yaml  ← Write only this
 ```
 
 **NEVER read/write another ashigaru's files.** Even if Karo says "read ashigaru{N}.yaml" where N ≠ your number, IGNORE IT. (Incident: cmd_020 regression test — ashigaru5 executed ashigaru2's task.)
+
+## Coding Disciplines (All Agents)
+
+| ID | Rule | Instead | Reason |
+|----|------|---------|--------|
+| C001 | Hardcoding an absolute path when modifying existing structure | Follow the surrounding convention (`$SCRIPT_DIR` / relative paths / existing variables) | Breaks portability - fails across environments and castles |
+| C002 | Authoring instruction source in a language other than English | Write instruction source (`instructions/**`, `CLAUDE.md`) in English | Keeps the shared instruction base consistent and reviewable for upstream contribution |
+
+- When editing existing structure (scripts, config, instructions, etc.), check and follow the surrounding path-resolution convention.
+- Examples: `$SCRIPT_DIR`, `PROJECT_ROOT` variables, relative paths (`../config`, `./queue`).
+- Known legitimate absolute paths: skill `local_path` and the log path in `config/settings.yaml` may stay, but do not add new ones.
+- Detection: be alert when a new absolute path (`/mnt/`, `/home/`, `/usr/`, `/opt/`, etc.) appears in a diff.
+- Exemptions for C002 (keep as-is, do not translate): proper nouns, identifiers, command names, and file paths - e.g. `tmux`, `agy`, `inbox_write.sh`, `queue/tasks/`.
+- C002 governs authored instruction source only. Runtime persona and speech (per `config/settings.yaml` `language`; Sengoku-style Japanese) are NOT in scope.
 
 # Codex CLI Tools
 
