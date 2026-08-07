@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.shogun.android.util.EncryptedPrefsProvider
 import com.shogun.android.util.PrefsKeys
 
 object NotificationHelper {
@@ -46,38 +47,38 @@ object NotificationHelper {
     }
 
     fun showNotification(context: Context, message: String, tags: List<String>, title: String) {
-        val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = EncryptedPrefsProvider.getPreferences(context)
 
         val channelId: String
         val prefKey: String
         when {
             tags.any { it.contains("cmd_complete") } -> {
                 channelId = CH_CMD_COMPLETE
-                prefKey = "notify_cmd_complete"
+                prefKey = PrefsKeys.NOTIFY_CMD_COMPLETE
             }
             tags.any { it.contains("failure") } -> {
                 channelId = CH_CMD_FAILURE
-                prefKey = "notify_cmd_failure"
+                prefKey = PrefsKeys.NOTIFY_CMD_FAILURE
             }
             tags.any { it.contains("action_required") } -> {
                 channelId = CH_ACTION_REQUIRED
-                prefKey = "notify_action_required"
+                prefKey = PrefsKeys.NOTIFY_ACTION_REQUIRED
             }
             tags.any { it.contains("dashboard") } -> {
                 channelId = CH_DASHBOARD_UPDATE
-                prefKey = "notify_dashboard_update"
+                prefKey = PrefsKeys.NOTIFY_DASHBOARD_UPDATE
             }
             tags.any { it.contains("streak") } -> {
                 channelId = CH_STREAK_UPDATE
-                prefKey = "notify_streak_update"
+                prefKey = PrefsKeys.NOTIFY_STREAK_UPDATE
             }
             tags.any { it.contains("agent") } -> {
                 channelId = CH_AGENT_RESPONSE
-                prefKey = "notify_agent_response"
+                prefKey = PrefsKeys.NOTIFY_AGENT_RESPONSE
             }
             else -> {
                 channelId = CH_CMD_COMPLETE
-                prefKey = "notify_cmd_complete"
+                prefKey = PrefsKeys.NOTIFY_CMD_COMPLETE
             }
         }
 

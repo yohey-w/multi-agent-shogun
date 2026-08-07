@@ -18,14 +18,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.shogun.android.ui.theme.*
-import com.shogun.android.util.Defaults
-import com.shogun.android.util.PrefsKeys
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,44 +33,121 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.shogun.android.data.Profile
+import com.shogun.android.ui.theme.*
 import com.shogun.android.util.AppLogger
+import com.shogun.android.util.Defaults
+import com.shogun.android.viewmodel.ProfileViewModel
 import com.shogun.android.viewmodel.SettingsViewModel
 import java.io.File
 
 @Composable
-fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
+fun SettingsScreen(
+    profileViewModel: ProfileViewModel,
+    settingsViewModel: SettingsViewModel = viewModel()
+) {
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+    val profiles by profileViewModel.profiles.collectAsState()
+    val activeProfile by profileViewModel.activeProfile.collectAsState()
 
-    var host by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_HOST, Defaults.SSH_HOST) ?: Defaults.SSH_HOST) }
-    var port by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PORT, Defaults.SSH_PORT_STR) ?: Defaults.SSH_PORT_STR) }
-    var user by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_USER, "") ?: "") }
-    var keyPath by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_KEY_PATH, "") ?: "") }
-    var password by remember { mutableStateOf(prefs.getString(PrefsKeys.SSH_PASSWORD, "") ?: "") }
-    var projectPath by remember { mutableStateOf(prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: "") }
-    var shogunSession by remember { mutableStateOf(prefs.getString(PrefsKeys.SHOGUN_SESSION, Defaults.SHOGUN_SESSION) ?: Defaults.SHOGUN_SESSION) }
-    var agentsSession by remember { mutableStateOf(prefs.getString(PrefsKeys.AGENTS_SESSION, Defaults.AGENTS_SESSION) ?: Defaults.AGENTS_SESSION) }
+    var editingProfileId by remember { mutableStateOf(activeProfile?.id) }
 
-    var saved by remember { mutableStateOf(false) }
-    var tapCount by remember { mutableIntStateOf(0) }
-    var showDebugLog by remember { mutableStateOf(false) }
-    val pickSshKeyLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-
-        runCatching { copySshKeyToAppStorage(context, uri) }
-            .onSuccess { importedPath ->
-                keyPath = importedPath
-                saved = false
-                Toast.makeText(context, "秘密鍵をアプリ領域へコピーしたでござる", Toast.LENGTH_SHORT).show()
-            }
-            .onFailure { error ->
-                Toast.makeText(context, "秘密鍵取込失敗: ${error.message}", Toast.LENGTH_LONG).show()
-            }
+    // Keep editingProfileId valid: if the profile was deleted, fall back to active
+    LaunchedEffect(profiles) {
+        if (editingProfileId != null && profiles.none { it.id == editingProfileId }) {
+            editingProfileId = activeProfile?.id
+        }
     }
 
-    // Debug log dialog
+    val editingProfile = profiles.find { it.id == editingProfileId } ?: activeProfile
+
+    // Dialog states
+    var showAddDialog by remember { mutableStateOf(false) }
+    var addNameInput by remember { mutableStateOf("") }
+    var duplicateSourceId by remember { mutableStateOf<String?>(null) }
+    var duplicateNameInput by remember { mutableStateOf("") }
+    var tapCount by remember { mutableIntStateOf(0) }
+    var showDebugLog by remember { mutableStateOf(false) }
+
+    // Add profile dialog
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false; addNameInput = "" },
+            containerColor = Shikkoku,
+            title = { Text("新規プロファイル", color = Kinpaku) },
+            text = {
+                OutlinedTextField(
+                    value = addNameInput,
+                    onValueChange = { addNameInput = it },
+                    label = { Text("プロファイル名") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = addNameInput.trim()
+                        if (trimmed.isNotBlank()) {
+                            val newProfile = Profile(name = trimmed)
+                            profileViewModel.addProfile(newProfile)
+                            editingProfileId = newProfile.id
+                            addNameInput = ""
+                            showAddDialog = false
+                        }
+                    },
+                    enabled = addNameInput.isNotBlank()
+                ) { Text("作成", color = Kinpaku) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddDialog = false; addNameInput = "" }) {
+                    Text("キャンセル", color = TextMuted)
+                }
+            }
+        )
+    }
+
+    // Duplicate profile dialog
+    duplicateSourceId?.let { sourceId ->
+        AlertDialog(
+            onDismissRequest = { duplicateSourceId = null; duplicateNameInput = "" },
+            containerColor = Shikkoku,
+            title = { Text("プロファイルを複製", color = Kinpaku) },
+            text = {
+                OutlinedTextField(
+                    value = duplicateNameInput,
+                    onValueChange = { duplicateNameInput = it },
+                    label = { Text("新しいプロファイル名") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = duplicateNameInput.trim()
+                        if (trimmed.isNotBlank()) {
+                            val result = profileViewModel.duplicateProfile(sourceId, trimmed)
+                            if (result != null) {
+                                editingProfileId = result.id
+                            } else {
+                                Toast.makeText(context, "複製に失敗しました", Toast.LENGTH_SHORT).show()
+                            }
+                            duplicateSourceId = null
+                            duplicateNameInput = ""
+                        }
+                    },
+                    enabled = duplicateNameInput.isNotBlank()
+                ) { Text("複製", color = Kinpaku) }
+            },
+            dismissButton = {
+                TextButton(onClick = { duplicateSourceId = null; duplicateNameInput = "" }) {
+                    Text("キャンセル", color = TextMuted)
+                }
+            }
+        )
+    }
+
     if (showDebugLog) {
         DebugLogDialog(onDismiss = { showDebugLog = false })
     }
@@ -84,7 +161,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "SSH設定",
+            "プロファイル管理",
             style = MaterialTheme.typography.titleLarge,
             color = Kinpaku,
             modifier = Modifier.clickable {
@@ -96,9 +173,182 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
             }
         )
 
+        ProfileListSection(
+            profiles = profiles,
+            activeProfileId = activeProfile?.id,
+            editingProfileId = editingProfileId,
+            onProfileClick = { id ->
+                editingProfileId = id
+            },
+            onAddClick = { showAddDialog = true },
+            onDuplicateClick = { id ->
+                val source = profiles.find { it.id == id }
+                duplicateNameInput = "${source?.name ?: "プロファイル"}_コピー"
+                duplicateSourceId = id
+            },
+            onDeleteClick = { id ->
+                if (id == activeProfile?.id) {
+                    Toast.makeText(context, "現在選択中のプロファイルは削除できません", Toast.LENGTH_SHORT).show()
+                } else {
+                    profileViewModel.deleteProfile(id)
+                }
+            }
+        )
+
+        if (editingProfile != null) {
+            Divider(color = Sumi)
+            Text("プロファイル設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+            ProfileEditSection(
+                profile = editingProfile,
+                onSave = { updated -> profileViewModel.updateProfile(updated) }
+            )
+        } else {
+            Text(
+                "プロファイルを追加してください",
+                color = TextMuted,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Divider(color = Sumi)
+        NtfySettingsSection(viewModel = settingsViewModel)
+    }
+}
+
+@Composable
+private fun ProfileListSection(
+    profiles: List<Profile>,
+    activeProfileId: String?,
+    editingProfileId: String?,
+    onProfileClick: (String) -> Unit,
+    onAddClick: () -> Unit,
+    onDuplicateClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        profiles.forEach { profile ->
+            ProfileListItem(
+                profile = profile,
+                isActive = profile.id == activeProfileId,
+                isEditing = profile.id == editingProfileId,
+                onClick = { onProfileClick(profile.id) },
+                onDuplicate = { onDuplicateClick(profile.id) },
+                onDelete = { onDeleteClick(profile.id) }
+            )
+        }
+        OutlinedButton(
+            onClick = onAddClick,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(4.dp)
+        ) {
+            Text("＋ プロファイルを追加", color = Kinpaku)
+        }
+    }
+}
+
+@Composable
+private fun ProfileListItem(
+    profile: Profile,
+    isActive: Boolean,
+    isEditing: Boolean,
+    onClick: () -> Unit,
+    onDuplicate: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = if (isEditing) Sumi else Color.Transparent,
+        shape = RoundedCornerShape(4.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                RadioButton(
+                    selected = isEditing,
+                    onClick = onClick,
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = Kinpaku,
+                        unselectedColor = TextMuted
+                    )
+                )
+                Text(
+                    text = profile.name,
+                    color = if (isActive) Kinpaku else Zouge,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Row {
+                IconButton(onClick = onDuplicate) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "複製", tint = TextMuted)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "削除", tint = Shuaka)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileEditSection(
+    profile: Profile,
+    onSave: (Profile) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    // Form state keyed to profile.id — resets when switching to a different profile
+    var name by remember(profile.id) { mutableStateOf(profile.name) }
+    var host by remember(profile.id) { mutableStateOf(profile.sshHost) }
+    var port by remember(profile.id) { mutableStateOf(profile.sshPort.toString()) }
+    var user by remember(profile.id) { mutableStateOf(profile.sshUser) }
+    var keyPath by remember(profile.id) { mutableStateOf(profile.sshKeyPath) }
+    var password by remember(profile.id) { mutableStateOf(profile.sshPassword) }
+    var projectPath by remember(profile.id) { mutableStateOf(profile.projectPath) }
+    var shogunSession by remember(profile.id) { mutableStateOf(profile.shogunSession) }
+    var agentsSession by remember(profile.id) { mutableStateOf(profile.agentsSession) }
+    var dashboardFileName by remember(profile.id) { mutableStateOf(profile.dashboardFileName) }
+    var saved by remember(profile.id) { mutableStateOf(false) }
+
+    val pickSshKeyLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching { copySshKeyToAppStorage(context, uri) }
+            .onSuccess { importedPath ->
+                keyPath = importedPath
+                saved = false
+                Toast.makeText(context, "秘密鍵をアプリ領域へコピーしたでござる", Toast.LENGTH_SHORT).show()
+            }
+            .onFailure { error ->
+                Toast.makeText(context, "秘密鍵取込失敗: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it; saved = false },
+            label = { Text("プロファイル名") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Text("SSH設定", style = MaterialTheme.typography.titleSmall, color = Kinpaku)
+
         OutlinedTextField(
             value = host,
-            onValueChange = { host = it },
+            onValueChange = { host = it; saved = false },
             label = { Text("SSHホスト") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -106,7 +356,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
 
         OutlinedTextField(
             value = port,
-            onValueChange = { port = it },
+            onValueChange = { port = it; saved = false },
             label = { Text("SSHポート") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -115,7 +365,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
 
         OutlinedTextField(
             value = user,
-            onValueChange = { user = it },
+            onValueChange = { user = it; saved = false },
             label = { Text("SSHユーザー") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -128,15 +378,11 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
         ) {
             OutlinedTextField(
                 value = keyPath,
-                onValueChange = {
-                    keyPath = it
-                    saved = false
-                },
+                onValueChange = { keyPath = it; saved = false },
                 label = { Text("SSH秘密鍵パス") },
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
-
             OutlinedButton(
                 onClick = { pickSshKeyLauncher.launch(arrayOf("*/*")) },
                 modifier = Modifier.defaultMinSize(minHeight = 56.dp),
@@ -148,33 +394,31 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { password = it; saved = false },
             label = { Text("SSHパスワード（鍵なし時に使用）") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation = PasswordVisualTransformation()
         )
 
-        Divider()
-
-        Text("プロジェクト設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+        Divider(color = Sumi)
+        Text("プロジェクト設定", style = MaterialTheme.typography.titleSmall, color = Kinpaku)
 
         OutlinedTextField(
             value = projectPath,
-            onValueChange = { projectPath = it },
+            onValueChange = { projectPath = it; saved = false },
             label = { Text("プロジェクトパス（サーバー側）") },
             placeholder = { Text("/path/to/multi-agent-shogun") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        Divider()
-
-        Text("セッション設定", style = MaterialTheme.typography.titleMedium, color = Kinpaku)
+        Divider(color = Sumi)
+        Text("セッション設定", style = MaterialTheme.typography.titleSmall, color = Kinpaku)
 
         OutlinedTextField(
             value = shogunSession,
-            onValueChange = { shogunSession = it },
+            onValueChange = { shogunSession = it; saved = false },
             label = { Text("将軍セッション名") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -182,33 +426,42 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel = viewModel()) {
 
         OutlinedTextField(
             value = agentsSession,
-            onValueChange = { agentsSession = it },
+            onValueChange = { agentsSession = it; saved = false },
             label = { Text("エージェントセッション名") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        Divider()
-
-        NtfySettingsSection(viewModel = settingsViewModel)
-
-        Divider()
+        OutlinedTextField(
+            value = dashboardFileName,
+            onValueChange = { dashboardFileName = it; saved = false },
+            label = { Text("ダッシュボードファイル名") },
+            placeholder = { Text("dashboard.md") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
 
         Button(
             onClick = {
-                prefs.edit()
-                    .putString(PrefsKeys.SSH_HOST, host)
-                    .putString(PrefsKeys.SSH_PORT, port)
-                    .putString(PrefsKeys.SSH_USER, user)
-                    .putString(PrefsKeys.SSH_KEY_PATH, keyPath)
-                    .putString(PrefsKeys.SSH_PASSWORD, password)
-                    .putString(PrefsKeys.PROJECT_PATH, projectPath)
-                    .putString(PrefsKeys.SHOGUN_SESSION, shogunSession)
-                    .putString(PrefsKeys.AGENTS_SESSION, agentsSession)
-                    .apply()
-                saved = true
+                if (name.isNotBlank()) {
+                    val updated = profile.copy(
+                        name = name.trim(),
+                        sshHost = host.trim(),
+                        sshPort = port.toIntOrNull() ?: Defaults.SSH_PORT,
+                        sshUser = user.trim(),
+                        sshKeyPath = keyPath.trim(),
+                        sshPassword = password,
+                        projectPath = projectPath.trim(),
+                        shogunSession = shogunSession.trim(),
+                        agentsSession = agentsSession.trim(),
+                        dashboardFileName = dashboardFileName.trim().ifBlank { "dashboard.md" }
+                    )
+                    onSave(updated)
+                    saved = true
+                }
             },
             modifier = Modifier.fillMaxWidth(),
+            enabled = name.isNotBlank(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Shuaka,
                 contentColor = Color.White
@@ -273,7 +526,6 @@ fun DebugLogDialog(onDismiss: () -> Unit) {
         },
         text = {
             Column {
-                // Copy to clipboard button
                 TextButton(onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("debug_log", entries.joinToString("\n"))

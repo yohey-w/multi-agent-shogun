@@ -1,6 +1,7 @@
 package com.shogun.android
 
 import android.Manifest
+import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,11 +18,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
+import com.shogun.android.data.Profile
+import com.shogun.android.data.SharedPreferencesProfileRepository
 import com.shogun.android.ssh.SshManager
+import com.shogun.android.util.EncryptedPrefsProvider
+import com.shogun.android.util.PreferencesMigration
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -29,12 +36,10 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import com.shogun.android.ui.theme.*
-import com.shogun.android.util.PrefsKeys
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -44,7 +49,9 @@ import com.shogun.android.ui.AgentsScreen
 import com.shogun.android.ui.DashboardScreen
 import com.shogun.android.ui.SettingsScreen
 import com.shogun.android.ui.ShogunScreen
-import com.shogun.android.ui.theme.ShogunTheme
+import com.shogun.android.ui.theme.*
+import com.shogun.android.util.PrefsKeys
+import com.shogun.android.viewmodel.ProfileViewModel
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Shogun : Screen("shogun", "将軍", Icons.Default.Star)
@@ -63,6 +70,7 @@ val bottomNavItems = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PreferencesMigration.migrateIfNeeded(this)
         enableEdgeToEdge()
         NotificationHelper.initChannels(this)
         setContent {
@@ -71,12 +79,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         handleShareIntent(intent)
-        // Only start NtfyService if notification permission is granted (Android 13+)
         val hasNotifPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         } else true
-        if (hasNotifPerm && getSharedPreferences(PrefsKeys.PREFS_NAME, MODE_PRIVATE)
+        if (hasNotifPerm && EncryptedPrefsProvider.getPreferences(this)
                 .getBoolean(PrefsKeys.NOTIFICATION_ENABLED, true)) {
             try {
                 startForegroundService(Intent(this, NtfyService::class.java))
@@ -120,8 +127,16 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val prefs = getSharedPreferences(PrefsKeys.PREFS_NAME, Context.MODE_PRIVATE)
-        val projectPath = prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: ""
+        val prefs = EncryptedPrefsProvider.getPreferences(this)
+        val repository = SharedPreferencesProfileRepository(prefs)
+        val activeId = repository.getActiveProfileId()
+        val activeProfile = repository.loadProfiles().let { profiles ->
+            profiles.find { it.id == activeId } ?: profiles.firstOrNull()
+        }
+        // Fallback to legacy prefs key for users who haven't migrated to profiles yet
+        val projectPath = activeProfile?.projectPath
+            ?: prefs.getString(PrefsKeys.PROJECT_PATH, "") ?: ""
+
         if (projectPath.isBlank()) {
             Toast.makeText(this, "❌ 設定画面でプロジェクトパスを設定してください", Toast.LENGTH_LONG).show()
             return
@@ -146,9 +161,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ShogunApp() {
     val context = LocalContext.current
+    val application = context.applicationContext as Application
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Profile ViewModel — Activity scoped (hoisted here, shared across screens)
+    val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModel.factory(application))
+    val activeProfile by profileViewModel.activeProfile.collectAsState()
+    val profiles by profileViewModel.profiles.collectAsState()
 
     // BGM — 3 tracks, tap to cycle: shogun → shogun_reiwa → shogun_ashigirls → OFF → shogun ...
     data class BgmTrack(val resId: Int, val label: String)
@@ -215,11 +236,12 @@ fun ShogunApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
+            var showProfileMenu by remember { mutableStateOf(false) }
             NavigationBar(
                 containerColor = Shikkoku,
                 contentColor = Kinpaku,
             ) {
-                bottomNavItems.forEach { screen ->
+                bottomNavItems.filter { it != Screen.Settings }.forEach { screen ->
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = screen.label) },
                         label = { Text(screen.label, fontSize = 10.sp, maxLines = 1) },
@@ -242,6 +264,58 @@ fun ShogunApp() {
                         }
                     )
                 }
+                NavigationBarItem(
+                    icon = {
+                        Box {
+                            Icon(Icons.Default.Group, contentDescription = "プロファイル")
+                            DropdownMenu(
+                                expanded = showProfileMenu,
+                                onDismissRequest = { showProfileMenu = false }
+                            ) {
+                                profiles.forEach { profile ->
+                                    DropdownMenuItem(
+                                        text = { Text(profile.name) },
+                                        onClick = {
+                                            profileViewModel.selectProfile(profile.id)
+                                            showProfileMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    label = { Text(activeProfile?.name ?: "プロファイル", fontSize = 10.sp, maxLines = 1) },
+                    selected = false,
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Kinpaku,
+                        selectedTextColor = Kinpaku,
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted,
+                        indicatorColor = Sumi,
+                    ),
+                    onClick = { showProfileMenu = true }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Screen.Settings.icon, contentDescription = Screen.Settings.label) },
+                    label = { Text(Screen.Settings.label, fontSize = 10.sp, maxLines = 1) },
+                    selected = currentRoute == Screen.Settings.route,
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = Kinpaku,
+                        selectedTextColor = Kinpaku,
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted,
+                        indicatorColor = Sumi,
+                    ),
+                    onClick = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
         }
     ) { innerPadding ->
@@ -251,22 +325,30 @@ fun ShogunApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Shogun.route) {
-                ShogunScreen(
-                    mediaPlayer = mediaPlayer,
-                    isBgmPlaying = isBgmPlaying,
-                    bgmTrackLabel = bgmTrackLabel,
-                    onBgmToggle = {
-                        // Cycle: OFF → track0 → track1 → track2 → OFF
-                        val nextIndex = if (currentTrackIndex < 0) 0
-                            else if (currentTrackIndex >= tracks.size - 1) -1
-                            else currentTrackIndex + 1
-                        switchTrack(nextIndex)
-                    }
-                )
+                key(activeProfile?.id) {
+                    ShogunScreen(
+                        profileId = activeProfile?.id,
+                        mediaPlayer = mediaPlayer,
+                        isBgmPlaying = isBgmPlaying,
+                        bgmTrackLabel = bgmTrackLabel,
+                        onBgmToggle = {
+                            val nextIndex = if (currentTrackIndex < 0) 0
+                                else if (currentTrackIndex >= tracks.size - 1) -1
+                                else currentTrackIndex + 1
+                            switchTrack(nextIndex)
+                        }
+                    )
+                }
             }
-            composable(Screen.Agents.route) { AgentsScreen() }
-            composable(Screen.Dashboard.route) { DashboardScreen() }
-            composable(Screen.Settings.route) { SettingsScreen() }
+            composable(Screen.Agents.route) {
+                key(activeProfile?.id) { AgentsScreen(profileId = activeProfile?.id) }
+            }
+            composable(Screen.Dashboard.route) {
+                key(activeProfile?.id) { DashboardScreen(profileId = activeProfile?.id) }
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(profileViewModel = profileViewModel)
+            }
         }
     }
 }
