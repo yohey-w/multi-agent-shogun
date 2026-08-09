@@ -131,6 +131,15 @@ LAST_NUDGE_COUNT=${LAST_NUDGE_COUNT:-""}
 NUDGE_COOLDOWN_SEC=${NUDGE_COOLDOWN_SEC:-60}
 # Codex は「思考中に入力が入ると即拾う」挙動があり、思考がループすることがあるため長めにする。
 NUDGE_COOLDOWN_SEC_CODEX=${NUDGE_COOLDOWN_SEC_CODEX:-300}
+# Absolute minimum interval between any nudge (regardless of count change).
+# Guards against nudge spam when follow-up messages arrive in rapid succession.
+# Phase 3 /clear uses its own 5-minute cooldown and bypasses this check.
+NUDGE_MIN_INTERVAL_SEC=${NUDGE_MIN_INTERVAL_SEC:-30}
+
+# ─── Inbox archive ───
+# Archive excess read messages to keep inbox YAML small and reduce full-read cost.
+INBOX_ARCHIVE_ENABLED=${INBOX_ARCHIVE_ENABLED:-1}
+INBOX_ARCHIVE_KEEP_READ=${INBOX_ARCHIVE_KEEP_READ:-20}
 
 reset_nudge_throttle() {
     LAST_NUDGE_TS=0
@@ -243,6 +252,18 @@ should_throttle_nudge() {
         # Claude Code: same cooldown as default (60s).
         # Stop hook is supplementary, not primary — nudge immediately.
         cooldown_sec="${NUDGE_COOLDOWN_SEC_CLAUDE:-60}"
+    fi
+
+    # Absolute cooldown — skip if within NUDGE_MIN_INTERVAL_SEC regardless of count change.
+    # Prevents nudge spam when message count changes rapidly (e.g. follow-up messages in quick succession).
+    # Phase 3 /clear uses send_cli_command directly and does not pass through here.
+    local min_interval="${NUDGE_MIN_INTERVAL_SEC:-30}"
+    if [ "$min_interval" -gt 0 ] && [ "${LAST_NUDGE_TS:-0}" -gt 0 ]; then
+        local abs_age=$((now - LAST_NUDGE_TS))
+        if [ "$abs_age" -lt "$min_interval" ]; then
+            echo "[$(date)] [SKIP] Absolute cooldown for $AGENT_ID: inbox${unread_count} (${abs_age}s < ${min_interval}s min interval)" >&2
+            return 0
+        fi
     fi
 
     # Standard throttle: skip if same count within cooldown window.
@@ -423,6 +444,103 @@ no_idle_full_read() {
     return 0
 }
 
+# ─── Archive read messages ───
+# Moves excess read messages to queue/inbox/archive/{agent}.yaml to keep
+# the active inbox YAML small, reducing full-read cost per cycle.
+# Safety: unread messages are NEVER moved — only read=true entries are archived.
+# Called after all messages are confirmed read (normal_count == 0 path).
+archive_read_messages() {
+    [ "${INBOX_ARCHIVE_ENABLED:-1}" = "1" ] || return 0
+    local keep_read="${INBOX_ARCHIVE_KEEP_READ:-20}"
+    local archive_dir
+    archive_dir="$(dirname "$INBOX")/archive"
+    local archive_file="$archive_dir/${AGENT_ID}.yaml"
+
+    local result
+    result=$(
+        (
+            if ! acquire_inbox_lock; then
+                echo "SKIP_LOCK_FAILED"
+                exit 0
+            fi
+            trap release_inbox_lock EXIT
+            INBOX_PATH="$INBOX" ARCHIVE_PATH="$archive_file" KEEP_READ="$keep_read" \
+            "$SCRIPT_DIR/.venv/bin/python3" - << 'PY'
+import os
+import yaml
+
+inbox_path = os.environ.get("INBOX_PATH", "")
+archive_path = os.environ.get("ARCHIVE_PATH", "")
+keep_read = int(os.environ.get("KEEP_READ", "20"))
+
+try:
+    with open(inbox_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    messages = data.get("messages", []) or []
+    unread_msgs = [m for m in messages if not m.get("read", False)]
+    read_msgs = [m for m in messages if m.get("read", False)]
+
+    # Safety guard: never archive when unread messages exist
+    if unread_msgs:
+        print("SKIP_HAS_UNREAD")
+        raise SystemExit(0)
+
+    # Only archive if we exceed the keep threshold
+    if len(read_msgs) <= keep_read:
+        print("SKIP_BELOW_THRESHOLD")
+        raise SystemExit(0)
+
+    # Keep the most recent `keep_read` entries; archive the oldest ones
+    to_keep = read_msgs[-keep_read:]
+    to_archive = read_msgs[:-keep_read]
+
+    # Append archived messages to archive file (append-only, no history loss)
+    os.makedirs(os.path.dirname(archive_path), exist_ok=True)
+    try:
+        with open(archive_path, "r", encoding="utf-8") as f:
+            archive_data = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        archive_data = {}
+
+    archive_msgs = archive_data.get("messages", []) or []
+    archive_msgs.extend(to_archive)
+    archive_data["messages"] = archive_msgs
+
+    tmp_archive = f"{archive_path}.tmp.{os.getpid()}"
+    with open(tmp_archive, "w", encoding="utf-8") as f:
+        yaml.safe_dump(archive_data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    os.replace(tmp_archive, archive_path)
+
+    # Update inbox: keep only the recent read messages (unread is empty at this point)
+    data["messages"] = to_keep
+    tmp_inbox = f"{inbox_path}.tmp.{os.getpid()}"
+    with open(tmp_inbox, "w", encoding="utf-8") as f:
+        yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    os.replace(tmp_inbox, inbox_path)
+
+    print(f"ARCHIVED:{len(to_archive)}")
+except SystemExit:
+    raise
+except Exception as e:
+    print(f"ERROR:{e}")
+PY
+        ) 200>"$LOCKFILE" 2>/dev/null
+    )
+    case "$result" in
+        ARCHIVED:*)
+            local archived_count="${result#ARCHIVED:}"
+            echo "[$(date)] [ARCHIVE] Archived $archived_count read messages for $AGENT_ID → $archive_file" >&2
+            ;;
+        SKIP_HAS_UNREAD|SKIP_BELOW_THRESHOLD|SKIP_LOCK_FAILED)
+            : # skip silently
+            ;;
+        ERROR:*)
+            echo "[$(date)] [ARCHIVE] WARNING: archive failed for $AGENT_ID: ${result#ERROR:}" >&2
+            ;;
+    esac
+}
+
 # summary-first: unread_count fast-path before full read
 get_unread_count_fast() {
     INBOX_PATH="$INBOX" "$SCRIPT_DIR/.venv/bin/python3" - << 'PY'
@@ -487,14 +605,17 @@ try:
     normal_count = len(unread) - len(specials)
     normal_msgs = [m for m in unread if m.get("type") not in special_types]
     has_task_assigned = any(m.get("type") == "task_assigned" for m in normal_msgs)
+    # unread_bytes = actual bytes of unread message content (not full file size)
+    unread_bytes = sum(len(json.dumps(m, ensure_ascii=False).encode("utf-8")) for m in unread)
     payload = {
         "count": normal_count,
+        "unread_bytes": unread_bytes,
         "has_task_assigned": has_task_assigned,
         "specials": [{"type": m.get("type", ""), "content": m.get("content", "")} for m in specials],
     }
     print(json.dumps(payload))
 except Exception:
-    print(json.dumps({"count": 0, "specials": []}))
+    print(json.dumps({"count": 0, "unread_bytes": 0, "specials": []}))
 PY
     ) 200>"$LOCKFILE" 2>/dev/null
 }
@@ -1081,11 +1202,10 @@ process_unread() {
     local info
     info=$(get_unread_info)
 
-    local read_bytes=0
-    if [ -f "$INBOX" ]; then
-        read_bytes=$(wc -c < "$INBOX" 2>/dev/null || echo 0)
-    fi
-    update_metrics "${read_bytes:-0}"
+    # Use unread message bytes (not full file size) for accurate token metrics
+    local unread_bytes=0
+    unread_bytes=$(echo "$info" | "$SCRIPT_DIR/.venv/bin/python3" -c "import sys,json; print(json.load(sys.stdin).get('unread_bytes', 0))" 2>/dev/null || echo 0)
+    update_metrics "${unread_bytes:-0}"
 
     # Handle special CLI commands first (/clear, /model)
     local specials
@@ -1273,6 +1393,8 @@ for s in data.get('specials', []):
         FIRST_UNREAD_SEEN=0
         NEW_CONTEXT_SENT=0
         reset_nudge_throttle
+        # Archive excess read messages when inbox is fully processed
+        archive_read_messages
         # Ensure idle flag exists when all messages are read.
         # Recovers from stop_hook_inbox.sh flag loss during block cycles.
         touch "${IDLE_FLAG_DIR:-/tmp}/shogun_idle_${AGENT_ID}" 2>/dev/null || true
