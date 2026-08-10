@@ -26,7 +26,7 @@ CLI_ADAPTER_ALLOWED_CLIS="claude codex copilot kimi opencode antigravity"
 # CLI種別の互換aliasを正規名へ正規化する。
 _cli_adapter_normalize_cli_type() {
     local cli_type="${1:-}"
-    cli_type="${cli_type,,}"
+    cli_type="$(echo "$cli_type" | tr '[:upper:]' '[:lower:]')"
     case "$cli_type" in
         gemini|agy) echo "antigravity" ;;
         *)          echo "$cli_type" ;;
